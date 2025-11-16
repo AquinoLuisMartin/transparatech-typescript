@@ -36,45 +36,102 @@ const LogIn: React.FC = () => {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     
+    // Prepare login data - only send filled fields
+    const loginData: { password: string; email?: string; studentNumber?: string } = {
+      password: formData.password
+    };
+    
+    if (formData.email.trim()) {
+      loginData.email = formData.email;
+    }
+    
+    if (formData.studentNumber.trim()) {
+      loginData.studentNumber = formData.studentNumber;
+    }
+    
     try {
-      const response = await axios.post('/api/v1/auth/login', formData);
+      const response = await axios.post('/api/v1/auth/login', loginData);
 
       if (response.data.success) {
         const { user, accessToken } = response.data.data;
         
+        console.log('Login successful! Full response:', response.data);
+        console.log('User data:', user);
+        console.log('Account Type:', user.accountType);
+        console.log('Role ID:', user.roleId);
+        
+        // Map account type to role for the auth system
+        let authRole = 'viewer'; // default
+        const accountType = user.accountType || response.data.data.user.accountType;
+        
+        if (accountType === 'Administrator') {
+          authRole = 'admin_full';
+        } else if (accountType === 'Officer') {
+          authRole = 'officer';
+        } else if (accountType === 'Organization Member (Viewer)') {
+          authRole = 'viewer';
+        }
+
         const userSession = {
           name: `${user.firstName} ${user.lastName}`,
           email: user.email,
           studentNumber: user.studentNumber,
-          role: user.roleId, // This should be the role name from the server
-          organization: user.organizationId, // This should be the org name
+          accountType: user.accountType,
+          role: authRole, // Use the string role, not numeric roleId
+          organization: user.organization,
         };
 
         localStorage.setItem('userSession', JSON.stringify(userSession));
         localStorage.setItem('accessToken', accessToken);
         
-        login(user.roleId);
+        console.log('Setting auth role:', authRole);
+        login(authRole);
 
-        // Navigate based on role
-        switch (user.roleId) {
-          case 1: // Assuming 1 is admin
-            navigate('/dashboard/admin');
-            break;
-          case 2: // Assuming 2 is officer
-            navigate('/dashboard/officer');
-            break;
-          case 3: // Assuming 3 is viewer
-            navigate('/dashboard/viewer');
-            break;
-          default:
-            navigate('/dashboard');
+        // Navigate based on account type from database
+        
+        console.log('Determining navigation for account type:', accountType);
+        
+        if (accountType === 'Administrator') {
+          console.log('Redirecting to: /dashboard/admin');
+          navigate('/dashboard/admin');
+        } else if (accountType === 'Officer') {
+          console.log('Redirecting to: /dashboard/officer');
+          navigate('/dashboard/officer');
+        } else if (accountType === 'Organization Member (Viewer)') {
+          console.log('Redirecting to: /dashboard/viewer');
+          navigate('/dashboard/viewer');
+        } else {
+          console.log('Using fallback navigation based on roleId:', user.roleId);
+          // Fallback based on roleId
+          switch (user.roleId) {
+            case 1:
+              console.log('Redirecting to: /dashboard/admin');
+              navigate('/dashboard/admin');
+              break;
+            case 2:
+              console.log('Redirecting to: /dashboard/officer');
+              navigate('/dashboard/officer');
+              break;
+            case 3:
+              console.log('Redirecting to: /dashboard/viewer');
+              navigate('/dashboard/viewer');
+              break;
+            default:
+              console.log('Redirecting to: /dashboard (default)');
+              navigate('/dashboard');
+          }
         }
       }
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
+        console.error('Login error:', error.response.data);
         alert(error.response.data.message || 'An error occurred during login.');
+      } else if (axios.isAxiosError(error) && error.request) {
+        console.error('No response received:', error.request);
+        alert('No response from server. Please check if the server is running.');
       } else {
-        alert('An unexpected error occurred.');
+        console.error('Unexpected error:', error);
+        alert('An unexpected error occurred: ' + (error instanceof Error ? error.message : 'Unknown error'));
       }
     }
   };

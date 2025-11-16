@@ -9,7 +9,15 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD || 'password',
   max: 20, // Maximum number of clients in the pool
   idleTimeoutMillis: 30000, // How long a client is allowed to remain idle
-  connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
+  connectionTimeoutMillis: 5000, // Increased timeout to 5 seconds
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10000,
+});
+
+// Handle pool errors to prevent server crashes
+pool.on('error', (err, client) => {
+  console.error('Unexpected error on idle client', err);
+  // Don't exit the process, just log the error
 });
 
 // Test database connection

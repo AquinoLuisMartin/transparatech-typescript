@@ -91,8 +91,8 @@ const SignUp: React.FC = () => {
     // Filter out non-letter characters for name fields
     let filteredValue = value;
     if (name === 'firstName' || name === 'lastName') {
-      // Only allow letters (A-Z, a-z)
-      filteredValue = value.replace(/[^A-Za-z]/g, '');
+      // Only allow letters (A-Z, a-z) and spaces
+      filteredValue = value.replace(/[^A-Za-z ]/g, '');
     } else if (name === 'middleInitial') {
       // Only allow letters and limit to 2 characters
       filteredValue = value.replace(/[^A-Za-z]/g, '').slice(0, 2);
@@ -213,8 +213,8 @@ const SignUp: React.FC = () => {
   // strict student number format for members/officers: 20XX-XXXXX-SM-0
   const studentNumberPattern = /^20\d{2}-\d{5}-SM-0$/;
   const passwordPattern = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
-  // name validation patterns - letters only (A-Z, a-z)
-  const namePattern = /^[A-Za-z]+$/;
+  // name validation patterns - letters and spaces only
+  const namePattern = /^[A-Za-z ]+$/;
 
   const validateField = (name: string, value: string): boolean => {
     let message = '';
@@ -334,8 +334,18 @@ const SignUp: React.FC = () => {
       return;
     }
 
+    // Map account type to database values
+    const accountTypeMap: { [key: string]: string } = {
+      'member': 'Organization Member (Viewer)',
+      'officer': 'Officer',
+      'administrator': 'Administrator'
+    };
+
     try {
-      const response = await axios.post('/api/v1/auth/register', formData);
+      const response = await axios.post('/api/v1/auth/register', {
+        ...formData,
+        accountType: accountTypeMap[formData.accountType]
+      });
 
       if (response.data.success) {
         // show toast notification
@@ -369,9 +379,14 @@ const SignUp: React.FC = () => {
       }
     } catch (error: unknown) {
       if (axios.isAxiosError(error) && error.response) {
+        console.error('Registration error:', error.response.data);
         alert(error.response.data.message || 'An error occurred during registration.');
+      } else if (axios.isAxiosError(error) && error.request) {
+        console.error('No response received:', error.request);
+        alert('No response from server. Please check if the server is running.');
       } else {
-        alert('An unexpected error occurred.');
+        console.error('Unexpected error:', error);
+        alert('An unexpected error occurred: ' + (error instanceof Error ? error.message : 'Unknown error'));
       }
     }
   };

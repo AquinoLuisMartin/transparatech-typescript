@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { query } = require('../config/database');
+const DatabaseService = require('../services/DatabaseService');
 const { asyncHandler } = require('../utils/asyncHandler');
 
 const protect = asyncHandler(async (req, res, next) => {
@@ -19,16 +19,19 @@ const protect = asyncHandler(async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    const result = await query('SELECT id, email, role FROM users WHERE id = $1', [decoded.id]);
+    const user = await DatabaseService.findSignUpById(decoded.id);
     
-    if (result.rows.length === 0) {
+    if (!user) {
       return res.status(401).json({
         success: false,
         message: 'User not found'
       });
     }
 
-    req.user = result.rows[0];
+    req.user = {
+      id: user.id,
+      email: user.email
+    };
     next();
   } catch (error) {
     return res.status(401).json({
