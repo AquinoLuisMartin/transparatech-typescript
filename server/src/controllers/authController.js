@@ -12,6 +12,7 @@ const {
   generateEmailVerificationToken,
   isPasswordHashed
 } = require('../utils/auth');
+const validator = require('../utils/validator');
 
 // @desc    Register user
 // @route   POST /api/v1/auth/register
@@ -30,36 +31,36 @@ const register = asyncHandler(async (req, res) => {
   } = req.body;
 
   console.log('====== REGISTRATION REQUEST ======');
-  console.log('Body received:', req.body);
+  console.log('Body received (sanitized):', validator.sanitizeForDatabase(req.body));
   console.log('===================================\n');
 
-  // Validation
-  if (!email || !password || !firstName || !lastName || !accountType || !organization) {
-    console.log('Missing required fields');
+  // Enhanced validation and sanitization
+  const validationResult = validator.validateUserRegistration(req.body);
+  
+  if (!validationResult.isValid) {
+    console.log('Validation failed:', validationResult.errors);
     return res.status(400).json({
       success: false,
-      message: 'Please provide all required fields'
+      message: 'Validation failed',
+      errors: validationResult.errors
     });
   }
 
-  if (!validateEmail(email)) {
-    console.log('Invalid email');
-    return res.status(400).json({
-      success: false,
-      message: 'Please provide a valid email'
-    });
-  }
-
-  if (!validatePassword(password)) {
-    console.log('Password validation failed');
-    return res.status(400).json({
-      success: false,
-      message: 'Password must be at least 8 characters with 1 uppercase, 1 lowercase, 1 number, and 1 special character'
-    });
-  }
+  // Sanitize all inputs
+  const sanitizedData = validator.sanitizeForDatabase({
+    email,
+    password,
+    firstName,
+    lastName,
+    middleInitial,
+    studentNumber,
+    schoolNumber,
+    accountType,
+    organization
+  });
 
   // Check if user exists
-  const existingUser = await User.findByEmail(email);
+  const existingUser = await User.findByEmail(sanitizedData.email);
   if (existingUser) {
     console.log('User already exists');
     return res.status(400).json({
@@ -69,8 +70,8 @@ const register = asyncHandler(async (req, res) => {
   }
 
   // Check if student number exists (if provided)
-  if (studentNumber) {
-    const existingStudentNumber = await User.checkStudentNumberExists(studentNumber);
+  if (sanitizedData.studentNumber) {
+    const existingStudentNumber = await User.checkStudentNumberExists(sanitizedData.studentNumber);
     if (existingStudentNumber) {
       console.log('Student number already registered');
       return res.status(400).json({
@@ -81,33 +82,33 @@ const register = asyncHandler(async (req, res) => {
   }
 
   // Hash password with enhanced security
-  const hashedPassword = await hashPassword(password, 12); // Use 12 rounds for better security
+  const hashedPassword = await hashPassword(sanitizedData.password, 12); // Use 12 rounds for better security
   console.log('✅ Password hashed');
 
   // Create user
-  console.log('📝 Creating user with data:', {
-    email,
-    firstName,
-    lastName,
-    middleInitial,
-    studentNumber,
-    schoolNumber,
-    accountType,
-    organization
+  console.log('📝 Creating user with sanitized data:', {
+    email: sanitizedData.email,
+    firstName: sanitizedData.firstName,
+    lastName: sanitizedData.lastName,
+    middleInitial: sanitizedData.middleInitial,
+    studentNumber: sanitizedData.studentNumber,
+    schoolNumber: sanitizedData.schoolNumber,
+    accountType: sanitizedData.accountType,
+    organization: sanitizedData.organization
   });
 
   let user;
   try {
     user = await User.create({
-      email,
+      email: sanitizedData.email,
       password: hashedPassword,
-      firstName,
-      lastName,
-      middleName: middleInitial || null,
-      studentNumber: studentNumber && studentNumber.trim() ? studentNumber : null,
-      employeeId: schoolNumber && schoolNumber.trim() ? schoolNumber : null,
-      organizationId: organization,
-      accountType
+      firstName: sanitizedData.firstName,
+      lastName: sanitizedData.lastName,
+      middleName: sanitizedData.middleInitial || null,
+      studentNumber: sanitizedData.studentNumber && sanitizedData.studentNumber.trim() ? sanitizedData.studentNumber : null,
+      employeeId: sanitizedData.schoolNumber && sanitizedData.schoolNumber.trim() ? sanitizedData.schoolNumber : null,
+      organizationId: sanitizedData.organization,
+      accountType: sanitizedData.accountType
     });
 
     console.log('✅ User created:', user);
@@ -162,21 +163,40 @@ const register = asyncHandler(async (req, res) => {
 // @route   POST /api/v1/auth/login
 // @access  Public
 const login = asyncHandler(async (req, res) => {
-  const { email, password, studentNumber } = req.body;
+  // Sanitize inputs immediately
+  const sanitizedInput = validator.sanitizeForDatabase(req.body);
+  const { email, password, studentNumber } = sanitizedInput;
 
   console.log('🔐 LOGIN REQUEST DEBUG:');
   console.log('   Email:', email);
   console.log('   Student Number:', studentNumber);
   console.log('   Password received:', password ? 'YES' : 'NO');
   console.log('   Password length:', password ? password.length : 0);
-  console.log('   Password value:', password);
 
-  // Validation
+  // Enhanced validation
   if ((!email && !studentNumber) || !password) {
     console.log('❌ Validation failed: Missing credentials');
     return res.status(400).json({
       success: false,
       message: 'Please provide email or student number and password'
+    });
+  }
+
+  // Validate email format if provided
+  if (email && !validator.isEmail(email)) {
+    console.log('❌ Validation failed: Invalid email format');
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid email format'
+    });
+  }
+
+  // Validate student number format if provided
+  if (studentNumber && !validator.isValidStudentNumber(studentNumber)) {
+    console.log('❌ Validation failed: Invalid student number format');
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid student number format'
     });
   }
 
@@ -286,12 +306,21 @@ const getMe = asyncHandler(async (req, res) => {
 // @route   PUT /api/v1/auth/change-password
 // @access  Private
 const changePassword = asyncHandler(async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
+  // Sanitize inputs
+  const sanitizedInput = validator.sanitizeForDatabase(req.body);
+  const { currentPassword, newPassword } = sanitizedInput;
 
-  if (!currentPassword || !newPassword) {
+  // Enhanced validation
+  const validationResult = validator.validateRequestBody(
+    { currentPassword, newPassword },
+    ['currentPassword', 'newPassword']
+  );
+
+  if (!validationResult.isValid) {
     return res.status(400).json({
       success: false,
-      message: 'Please provide current password and new password'
+      message: 'Validation failed',
+      errors: validationResult.errors
     });
   }
 
@@ -306,7 +335,7 @@ const changePassword = asyncHandler(async (req, res) => {
   }
 
   // Check current password
-  const isMatch = await comparePassword(currentPassword, user.password);
+  const isMatch = await comparePassword(sanitizedData.currentPassword, user.password);
   if (!isMatch) {
     return res.status(401).json({
       success: false,
@@ -314,8 +343,11 @@ const changePassword = asyncHandler(async (req, res) => {
     });
   }
 
+  // Use sanitized data for password operations
+  const { sanitizedData } = validationResult;
+  
   // Validate new password
-  if (!validatePassword(newPassword)) {
+  if (!validatePassword(sanitizedData.newPassword)) {
     return res.status(400).json({
       success: false,
       message: 'New password does not meet security requirements'
@@ -323,7 +355,7 @@ const changePassword = asyncHandler(async (req, res) => {
   }
 
   // Check if new password is different from current
-  const isSamePassword = await comparePassword(newPassword, user.password);
+  const isSamePassword = await comparePassword(sanitizedData.newPassword, user.password);
   if (isSamePassword) {
     return res.status(400).json({
       success: false,
@@ -332,7 +364,7 @@ const changePassword = asyncHandler(async (req, res) => {
   }
 
   // Hash new password
-  const hashedNewPassword = await hashPassword(newPassword, 12);
+  const hashedNewPassword = await hashPassword(sanitizedData.newPassword, 12);
 
   // Update password using dedicated method
   await User.updatePassword(req.user.id, hashedNewPassword);

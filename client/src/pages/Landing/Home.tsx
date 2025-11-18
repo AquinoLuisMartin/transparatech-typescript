@@ -5,6 +5,7 @@ import './Home.css';
 // Navigation and brand assets
 import navLogo from '../../images/navlogo.png';
 import backgroundImage from '../../images/background.png';
+import HexadevsLogo from '../../images/HevadevsFooter.png';
 
 // Organization logos
 import SCLogo from '../../images/SC.png';
@@ -335,49 +336,71 @@ const Home: FC = () => {
       <footer 
         id="contact"
         data-animate
-        className={`footer-section ${
+        className={`bg-blue-950 text-white py-16 ${
           isVisible[4] ? 'translate-y-0 opacity-100' : 'translate-y-16 opacity-0'
-        }`}
+        } transition-all duration-1000 ease-out`}
       >
-        <div className="section-content">
-          <div className="footer-grid">
-            <div className="transition-transform duration-300">
-              <h3 className="text-lg font-semibold mb-4">About PUPSMB TransparaTech</h3>
-              <p className="text-gray-300">
-                The official management system for transparency and efficiency.
-              </p>
-            </div>
+        <div className="w-full px-6">
+          {/* 3-Section Horizontal Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12 items-start justify-between">
             
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
-              <ul className="space-y-2 text-gray-300">
-                <li><button onClick={() => scrollToSection('home')} className="transition-colors">Home</button></li>
-                <li><button onClick={() => scrollToSection('about')} className="transition-colors">About</button></li>
-                <li><button onClick={() => scrollToSection('features')} className="transition-colors">Features</button></li>
+            {/* Left Section: PUPSMB Logo and Copyright */}
+            <div className="flex flex-col items-center lg:items-start gap-6">
+              {/* PUPSMB Logo and Copyright */}
+              <div className="flex flex-col lg:flex-row items-center lg:items-start gap-4">
+                <img 
+                  src={navLogo} 
+                  alt="PUPSMB Logo" 
+                  className="w-16 h-16 object-contain"
+                />
+                <div className="text-center lg:text-left">
+                  <p className="text-white font-medium">© Hexadevs 2025</p>
+                  <p className="text-white/80 text-sm mt-1">All Rights Reserved</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Center Section: Links */}
+            <div className="text-center">
+              <ul className="space-y-3">
+                <li>
+                  <Link to="/about" className="text-white hover:text-blue-200 transition-colors duration-200">
+                    About Us
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/terms" className="text-white hover:text-blue-200 transition-colors duration-200">
+                    Terms & Conditions
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/privacy" className="text-white hover:text-blue-200 transition-colors duration-200">
+                    Privacy Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/faqs" className="text-white hover:text-blue-200 transition-colors duration-200">
+                    FAQs
+                  </Link>
+                </li>
               </ul>
             </div>
-            
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Resources</h3>
-              <ul className="space-y-2 text-gray-300">
-                <li><a href="#documentation" className="transition-colors">Documentation</a></li>
-                <li><a href="#support" className="transition-colors">Support</a></li>
-                <li><a href="#privacy" className="transition-colors">Privacy</a></li>
-              </ul>
+
+            {/* Right Section: HEXADEVS Logo and Text */}
+            <div className="flex flex-col items-center lg:items-end gap-6 lg:pr-8">
+              {/* HEXADEVS Logo and Text */}
+              <div className="flex flex-col items-center lg:items-end gap-2">
+                <p className="text-white font-medium lg:text-right">Developed By</p>
+                <img 
+                  src={HexadevsLogo} 
+                  alt="Hexadevs Logo" 
+                  width="134"
+                  height="67"
+                  className="object-contain"
+                />
+              </div>
             </div>
-            
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Contact</h3>
-              <ul className="space-y-2 text-gray-300">
-                <li><a href="#help" className="transition-colors">Help & Support</a></li>
-                <li><a href="#feedback" className="transition-colors">Feedback</a></li>
-                <li><a href="#contact" className="transition-colors">Contact Us</a></li>
-              </ul>
-            </div>
-          </div>
-          
-          <div className="footer-copyright">
-            <p>&copy; Hexadevs. All rights reserved.</p>
+
           </div>
         </div>
       </footer>

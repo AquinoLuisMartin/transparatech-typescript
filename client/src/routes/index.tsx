@@ -38,12 +38,32 @@ import FileUpload from '../pages/FileUpload';
 
 import LandingHome from '../pages/Landing/Home';
 import Dashboard from '../pages/Dashboard';
+import AboutUs from '../pages/AboutUs';
+import TermsConditions from '../pages/TermsConditions';
+import PrivacyPolicy from '../pages/PrivacyPolicy';
+import FAQs from '../pages/FAQs';
 
 const AppRoutes = () => {
   const routes = useRoutes([
     {
       path: '/',
       element: <LandingHome />,
+    },
+    {
+      path: '/about',
+      element: <AboutUs />,
+    },
+    {
+      path: '/terms',
+      element: <TermsConditions />,
+    },
+    {
+      path: '/privacy',
+      element: <PrivacyPolicy />,
+    },
+    {
+      path: '/faqs',
+      element: <FAQs />,
     },
     {
       path: '/dashboard',

@@ -9,11 +9,28 @@ const userRoutes = require('./routes/users');
 // const aiRoutes = require('./routes/ai'); // Temporarily commented out
 const { errorHandler } = require('./middleware/errorHandler');
 const { notFound } = require('./middleware/notFound');
+const { sanitizeInput, rateLimit, securityHeaders } = require('./middleware/sanitization');
 
 const app = express();
 
-// Middleware
+// Security Middleware (applied first)
+app.use(securityHeaders);
 app.use(helmet());
+
+// Rate limiting for all routes
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  maxRequests: 100 // limit each IP to 100 requests per windowMs
+}));
+
+// Stricter rate limiting for auth routes
+app.use('/api/v1/auth', rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  maxRequests: 5, // limit each IP to 5 auth requests per windowMs
+  message: 'Too many authentication attempts, please try again later'
+}));
+
+// CORS configuration
 app.use(cors({
   origin: [
     process.env.CLIENT_URL || 'http://localhost:5173',
@@ -21,9 +38,22 @@ app.use(cors({
   ],
   credentials: true
 }));
+
+// Logging
 app.use(morgan('combined'));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+
+// Body parsing with size limits
+app.use(express.json({ 
+  limit: '10mb',
+  verify: (req, res, buf) => {
+    // Store raw body for potential signature verification
+    req.rawBody = buf;
+  }
+}));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Input sanitization (applied after body parsing)
+app.use(sanitizeInput);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
