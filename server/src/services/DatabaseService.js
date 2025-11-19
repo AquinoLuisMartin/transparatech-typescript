@@ -1,11 +1,30 @@
 const { query } = require('../config/database');
+const USER_QUERIES = require('../database/queries/userQueries');
 
 /**
- * DatabaseService
- * Centralized service for all database operations with parameterized queries
- * Prevents SQL injection attacks
+ * Enhanced DatabaseService with improved security and maintainability
+ * All queries use parameterized statements to prevent SQL injection
+ * Query constants are externalized for better maintainability
  */
 class DatabaseService {
+  /**
+   * Executes a parameterized query safely
+   * @param {string} queryText - SQL query with parameters
+   * @param {Array} params - Query parameters
+   * @returns {Object} Query result
+   */
+  static async executeQuery(queryText, params = []) {
+    try {
+      return await query(queryText, params);
+    } catch (error) {
+      console.error('Database query execution failed:', {
+        error: error.message,
+        code: error.code,
+        constraint: error.constraint
+      });
+      throw error;
+    }
+  }
   /**
    * Insert a new signup record
    * @param {Object} userData - User data
@@ -25,27 +44,21 @@ class DatabaseService {
     } = userData;
 
     try {
-      const result = await query(
-        `INSERT INTO "SignUp" 
-         (email, password, first_name, last_name, middle_initial, student_number, school_number, organization, account_type)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-         RETURNING id, email, password, first_name, last_name, middle_initial, student_number, school_number, organization, account_type, created_at, updated_at`,
-        [
-          email,
-          password,
-          firstName,
-          lastName,
-          middleName || null,
-          studentNumber || null,
-          employeeId || null,
-          organizationId || null,
-          accountType || 'member'
-        ]
-      );
+      const result = await this.executeQuery(USER_QUERIES.CREATE_USER, [
+        email,
+        password,
+        firstName,
+        lastName,
+        middleName || null,
+        studentNumber || null,
+        employeeId || null,
+        organizationId || null,
+        accountType || 'member'
+      ]);
 
       return result.rows[0];
     } catch (error) {
-      console.error('DatabaseService insertSignUp error:', error.message);
+      console.error('User creation failed in database layer');
       throw error;
     }
   }
@@ -56,14 +69,7 @@ class DatabaseService {
    * @returns {Object} - User record
    */
   static async findSignUpByEmail(email) {
-    const result = await query(
-      `SELECT id, email, password, first_name, last_name, middle_initial, 
-              student_number, school_number, organization, account_type, created_at, updated_at
-       FROM "SignUp" 
-       WHERE email = $1`,
-      [email]
-    );
-
+    const result = await this.executeQuery(USER_QUERIES.FIND_BY_EMAIL, [email]);
     return result.rows[0] || null;
   }
 
@@ -73,14 +79,7 @@ class DatabaseService {
    * @returns {Object} - User record
    */
   static async findSignUpById(id) {
-    const result = await query(
-      `SELECT id, email, password, first_name, last_name, middle_initial, 
-              student_number, school_number, organization, account_type, created_at, updated_at
-       FROM "SignUp" 
-       WHERE id = $1`,
-      [id]
-    );
-
+    const result = await this.executeQuery(USER_QUERIES.FIND_BY_ID, [id]);
     return result.rows[0] || null;
   }
 
@@ -90,14 +89,7 @@ class DatabaseService {
    * @returns {Object} - User record
    */
   static async findSignUpByStudentNumber(studentNumber) {
-    const result = await query(
-      `SELECT id, email, password, first_name, last_name, middle_initial, 
-              student_number, school_number, organization, account_type, created_at, updated_at
-       FROM "SignUp" 
-       WHERE student_number = $1`,
-      [studentNumber]
-    );
-
+    const result = await this.executeQuery(USER_QUERIES.FIND_BY_STUDENT_NUMBER, [studentNumber]);
     return result.rows[0] || null;
   }
 
@@ -108,15 +100,7 @@ class DatabaseService {
    * @returns {Array} - User records
    */
   static async findAllSignUp(limit, offset) {
-    const result = await query(
-      `SELECT id, email, first_name, last_name, middle_initial, 
-              student_number, school_number, organization, account_type, created_at, updated_at
-       FROM "SignUp" 
-       ORDER BY created_at DESC
-       LIMIT $1 OFFSET $2`,
-      [limit, offset]
-    );
-
+    const result = await this.executeQuery(USER_QUERIES.FIND_ALL_PAGINATED, [limit, offset]);
     return result.rows;
   }
 
@@ -139,34 +123,18 @@ class DatabaseService {
       accountType
     } = updateData;
 
-    const result = await query(
-      `UPDATE "SignUp" 
-       SET email = COALESCE($1, email),
-           first_name = COALESCE($2, first_name),
-           last_name = COALESCE($3, last_name),
-           middle_initial = COALESCE($4, middle_initial),
-           student_number = COALESCE($5, student_number),
-           school_number = COALESCE($6, school_number),
-           organization = COALESCE($7, organization),
-           password = COALESCE($8, password),
-           account_type = COALESCE($9, account_type),
-           updated_at = NOW()
-       WHERE id = $10
-       RETURNING id, email, first_name, last_name, middle_initial, 
-                 student_number, school_number, organization, account_type, created_at, updated_at`,
-      [
-        email || null,
-        firstName || null,
-        lastName || null,
-        middleName || null,
-        studentNumber || null,
-        employeeId || null,
-        organizationId || null,
-        password || null,
-        accountType || null,
-        id
-      ]
-    );
+    const result = await this.executeQuery(USER_QUERIES.UPDATE_USER, [
+      email || null,
+      firstName || null,
+      lastName || null,
+      middleName || null,
+      studentNumber || null,
+      employeeId || null,
+      organizationId || null,
+      password || null,
+      accountType || null,
+      id
+    ]);
 
     return result.rows[0] || null;
   }
@@ -178,14 +146,7 @@ class DatabaseService {
    * @returns {Object} - Updated user record
    */
   static async updateSignUpPassword(id, hashedPassword) {
-    const result = await query(
-      `UPDATE "SignUp" 
-       SET password = $1, updated_at = NOW()
-       WHERE id = $2
-       RETURNING id, email, first_name, last_name, middle_initial, 
-                 student_number, school_number, organization, account_type, created_at, updated_at`,
-      [hashedPassword, id]
-    );
+    const result = await this.executeQuery(USER_QUERIES.UPDATE_PASSWORD, [hashedPassword, id]);
 
     return result.rows[0] || null;
   }
@@ -196,12 +157,7 @@ class DatabaseService {
    * @returns {boolean} - Success status
    */
   static async deleteSignUp(id) {
-    const result = await query(
-      `DELETE FROM "SignUp" 
-       WHERE id = $1 
-       RETURNING id`,
-      [id]
-    );
+    const result = await this.executeQuery(USER_QUERIES.DELETE_USER, [id]);
 
     return result.rowCount > 0;
   }
@@ -211,9 +167,7 @@ class DatabaseService {
    * @returns {number} - Total count
    */
   static async countSignUp() {
-    const result = await query(
-      `SELECT COUNT(*) as count FROM "SignUp"`
-    );
+    const result = await this.executeQuery(USER_QUERIES.COUNT_USERS);
 
     return parseInt(result.rows[0].count);
   }
@@ -224,10 +178,7 @@ class DatabaseService {
    * @returns {boolean} - Email exists status
    */
   static async emailExists(email) {
-    const result = await query(
-      `SELECT id FROM "SignUp" WHERE email = $1`,
-      [email]
-    );
+    const result = await this.executeQuery(USER_QUERIES.CHECK_EMAIL_EXISTS, [email]);
 
     return result.rows.length > 0;
   }
@@ -238,12 +189,18 @@ class DatabaseService {
    * @returns {boolean} - Student number exists status
    */
   static async studentNumberExists(studentNumber) {
-    const result = await query(
-      `SELECT id FROM "SignUp" WHERE student_number = $1`,
-      [studentNumber]
-    );
+    const result = await this.executeQuery(USER_QUERIES.CHECK_STUDENT_NUMBER_EXISTS, [studentNumber]);
 
     return result.rows.length > 0;
+  }
+
+  /**
+   * Validate database table structure
+   * @returns {Array} - Column information
+   */
+  static async validateTableStructure() {
+    const result = await this.executeQuery(USER_QUERIES.VALIDATE_TABLE_STRUCTURE);
+    return result.rows;
   }
 }
 

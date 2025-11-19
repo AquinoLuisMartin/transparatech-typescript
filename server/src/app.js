@@ -10,6 +10,7 @@ const userRoutes = require('./routes/users');
 const { errorHandler } = require('./middleware/errorHandler');
 const { notFound } = require('./middleware/notFound');
 const { sanitizeInput, rateLimit, securityHeaders } = require('./middleware/sanitization');
+const { validateCorsConfig } = require('./config/corsConfig');
 
 const app = express();
 
@@ -30,14 +31,9 @@ app.use('/api/v1/auth', rateLimit({
   message: 'Too many authentication attempts, please try again later'
 }));
 
-// CORS configuration
-app.use(cors({
-  origin: [
-    process.env.CLIENT_URL || 'http://localhost:5173',
-    'http://localhost:5174'
-  ],
-  credentials: true
-}));
+// Secure CORS configuration
+const corsConfig = validateCorsConfig();
+app.use(cors(corsConfig));
 
 // Logging
 app.use(morgan('combined'));
@@ -66,7 +62,6 @@ app.get('/health', (req, res) => {
 
 // API Routes
 const apiPrefix = process.env.API_PREFIX || '/api/v1';
-console.log('Registering routes with prefix:', apiPrefix);
 app.use(`${apiPrefix}/auth`, authRoutes);
 app.use(`${apiPrefix}/users`, userRoutes);
 // app.use(`${apiPrefix}/ai`, aiRoutes); // Temporarily commented out

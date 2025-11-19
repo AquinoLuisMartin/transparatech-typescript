@@ -9,7 +9,11 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "db:migrate": "node database/setup.js migrate",
     "db:seed": "node database/setup.js seed",
-    "db:reset": "node database/setup.js reset"
+    "db:reset": "node database/setup.js reset",
+    "security:setup": "node src/scripts/setup-security.js --generate",
+    "security:validate": "node src/scripts/setup-security.js --validate",
+    "security:jwt": "node src/scripts/setup-security.js --jwt-secret",
+    "prestart": "node src/scripts/setup-security.js --validate"
   },
   "keywords": [
     "express",

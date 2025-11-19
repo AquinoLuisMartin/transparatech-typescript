@@ -6,7 +6,7 @@ class User {
       const result = await DatabaseService.insertSignUp(userData);
       return this._formatUser(result);
     } catch (error) {
-      console.error('Error creating user:', error);
+      console.error('User creation failed - Database error occurred');
       throw error;
     }
   }
@@ -16,7 +16,7 @@ class User {
       const user = await DatabaseService.findSignUpByEmail(email);
       return user ? this._formatUser(user) : null;
     } catch (error) {
-      console.error('Error finding user by email:', error);
+      console.error('User lookup by email failed - Database error occurred');
       throw error;
     }
   }
@@ -26,7 +26,7 @@ class User {
       const user = await DatabaseService.findSignUpById(id);
       return user ? this._formatUser(user) : null;
     } catch (error) {
-      console.error('Error finding user by id:', error);
+      console.error('User lookup by ID failed - Database error occurred');
       throw error;
     }
   }
@@ -36,7 +36,7 @@ class User {
       const user = await DatabaseService.findSignUpByStudentNumber(studentNumber);
       return user ? this._formatUser(user) : null;
     } catch (error) {
-      console.error('Error finding user by student number:', error);
+      console.error('User lookup by student number failed - Database error occurred');
       throw error;
     }
   }
@@ -46,7 +46,7 @@ class User {
       const results = await DatabaseService.findAllSignUp(limit, offset);
       return results.map(user => this._formatUser(user));
     } catch (error) {
-      console.error('Error fetching all users:', error);
+      console.error('User fetch operation failed - Database error occurred');
       throw error;
     }
   }
@@ -56,7 +56,7 @@ class User {
       const result = await DatabaseService.updateSignUp(id, updateData);
       return result ? this._formatUser(result) : null;
     } catch (error) {
-      console.error('Error updating user:', error);
+      console.error('User update operation failed - Database error occurred');
       throw error;
     }
   }
@@ -66,7 +66,7 @@ class User {
       const result = await DatabaseService.updateSignUpPassword(id, hashedPassword);
       return result ? this._formatUser(result) : null;
     } catch (error) {
-      console.error('Error updating password:', error);
+      console.error('Password update operation failed - Database error occurred');
       throw error;
     }
   }
@@ -75,7 +75,7 @@ class User {
     try {
       return await DatabaseService.deleteSignUp(id);
     } catch (error) {
-      console.error('Error deleting user:', error);
+      console.error('User deletion operation failed - Database error occurred');
       throw error;
     }
   }
@@ -84,7 +84,7 @@ class User {
     try {
       return await DatabaseService.countSignUp();
     } catch (error) {
-      console.error('Error counting users:', error);
+      console.error('User count operation failed - Database error occurred');
       throw error;
     }
   }
@@ -93,7 +93,7 @@ class User {
     try {
       return await DatabaseService.emailExists(email);
     } catch (error) {
-      console.error('Error checking email existence:', error);
+      console.error('Email existence check failed - Database error occurred');
       throw error;
     }
   }
@@ -102,7 +102,7 @@ class User {
     try {
       return await DatabaseService.studentNumberExists(studentNumber);
     } catch (error) {
-      console.error('Error checking student number existence:', error);
+      console.error('Student number existence check failed - Database error occurred');
       throw error;
     }
   }
@@ -117,7 +117,7 @@ class User {
       last_name: dbUser.last_name,
       middle_name: dbUser.middle_initial,
       student_number: dbUser.student_number,
-      employee_id: dbUser.school_number,
+      employee_id: dbUser.employee_id,
       organization_id: dbUser.organization,
       account_type: dbUser.account_type,
       role_id: dbUser.role_id,

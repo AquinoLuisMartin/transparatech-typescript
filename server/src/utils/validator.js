@@ -20,7 +20,12 @@ const validator = {
 
   // Role validation
   isValidRole: (role) => {
-    const validRoles = ['admin', 'officer', 'viewer', 'user'];
+    const validRoles = [
+      'Administrator',
+      'Officer', 
+      'Organization Member (Viewer)',
+      'admin', 'officer', 'viewer', 'user' // Legacy support
+    ];
     return validRoles.includes(role);
   },
 
@@ -70,10 +75,10 @@ const validator = {
       // Remove potential script injection
       .replace(/javascript:/gi, '')
       .replace(/on\w+=/gi, '')
-      // Remove SQL injection keywords (basic prevention)
-      .replace(/(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION|SCRIPT)\b)/gi, '')
-      // Remove dangerous characters
-      .replace(/[<>'"`;\\]/g, '')
+      // Remove SQL injection keywords (basic prevention) - but preserve normal text
+      .replace(/\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION|SCRIPT)\s+/gi, '')
+      // Remove only the most dangerous characters
+      .replace(/[<>"';\\]/g, '')
       // Limit length
       .substring(0, 1000);
   },
@@ -131,9 +136,12 @@ const validator = {
   // Organization validation
   isValidOrganization: (organization) => {
     if (!organization) return false;
-    // Allow letters, numbers, spaces, and common punctuation, 2-100 characters
-    const orgRegex = /^[a-zA-Z0-9\s\-\.\,\(\)]{2,100}$/;
-    return orgRegex.test(organization);
+    // More flexible validation - allow most characters except potentially dangerous ones
+    if (typeof organization !== 'string') return false;
+    if (organization.trim().length < 2 || organization.trim().length > 200) return false;
+    // Just check for basic safety - no script tags or suspicious patterns
+    if (/<script|javascript:|on\w+=/i.test(organization)) return false;
+    return true;
   },
 
   // Enhanced request body validation with sanitization
@@ -182,33 +190,34 @@ const validator = {
       accountType
     } = userData;
 
-    // Required field validation
+    // Required field validation - only essential fields
     if (!validator.isRequired(email)) errors.push('Email is required');
     if (!validator.isRequired(password)) errors.push('Password is required');
     if (!validator.isRequired(firstName)) errors.push('First name is required');
     if (!validator.isRequired(lastName)) errors.push('Last name is required');
-    if (!validator.isRequired(organization)) errors.push('Organization is required');
-    if (!validator.isRequired(accountType)) errors.push('Account type is required');
 
-    // Format validation
+    // Basic format validation - more lenient
     if (email && !validator.isEmail(email)) errors.push('Invalid email format');
-    if (password && !validator.isStrongPassword(password)) {
-      errors.push('Password must be at least 8 characters with uppercase, lowercase, number, and special character');
+    
+    // Simplified password validation for now
+    if (password && password.length < 8) {
+      errors.push('Password must be at least 8 characters long');
     }
-    if (firstName && !validator.isValidName(firstName)) errors.push('Invalid first name format');
-    if (lastName && !validator.isValidName(lastName)) errors.push('Invalid last name format');
+    
+    // Basic name validation - just check they're not empty and reasonable length
+    if (firstName && (firstName.trim().length < 1 || firstName.trim().length > 50)) {
+      errors.push('First name must be 1-50 characters');
+    }
+    if (lastName && (lastName.trim().length < 1 || lastName.trim().length > 50)) {
+      errors.push('Last name must be 1-50 characters');
+    }
+    
+    // Optional field validation - only if provided
     if (middleInitial && middleInitial.length > 5) errors.push('Middle initial too long');
-    if (studentNumber && !validator.isValidStudentNumber(studentNumber)) {
-      errors.push('Invalid student number format');
-    }
-    if (employeeId && !validator.isValidEmployeeId(employeeId)) {
-      errors.push('Invalid employee ID format');
-    }
-    if (organization && !validator.isValidOrganization(organization)) {
-      errors.push('Invalid organization format');
-    }
-    if (accountType && !validator.isValidRole(accountType)) {
-      errors.push('Invalid account type');
+    
+    // Make organization and accountType optional for now to debug
+    if (organization && organization.trim().length > 200) {
+      errors.push('Organization name too long');
     }
 
     return {

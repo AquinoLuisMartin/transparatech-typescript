@@ -1,3 +1,8 @@
+const { getJWTSecret, initializeConfig } = require('./envValidator');
+
+// Initialize and validate configuration
+initializeConfig();
+
 const config = {
   development: {
     port: process.env.PORT || 3000,
@@ -14,7 +19,7 @@ const config = {
       }
     },
     jwt: {
-      secret: process.env.JWT_SECRET,
+      secret: getJWTSecret(),
       expiresIn: process.env.JWT_EXPIRE || '7d'
     },
     cors: {
@@ -42,7 +47,7 @@ const config = {
       }
     },
     jwt: {
-      secret: process.env.JWT_SECRET,
+      secret: getJWTSecret(),
       expiresIn: process.env.JWT_EXPIRE || '7d'
     },
     cors: {
@@ -70,7 +75,7 @@ const config = {
       }
     },
     jwt: {
-      secret: process.env.JWT_SECRET || 'test-secret',
+      secret: getJWTSecret(),
       expiresIn: '1h'
     },
     cors: {

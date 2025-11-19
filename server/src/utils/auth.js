@@ -22,7 +22,7 @@ const comparePassword = async (enteredPassword, hashedPassword) => {
   try {
     return await bcrypt.compare(enteredPassword, hashedPassword);
   } catch (error) {
-    console.error('Password comparison error:', error);
+    console.error('Password comparison failed - bcrypt error occurred');
     return false;
   }
 };
