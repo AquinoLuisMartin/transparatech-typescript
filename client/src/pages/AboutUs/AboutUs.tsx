@@ -78,6 +78,7 @@ const TEAM_MEMBERS: TeamMember[] = [
 
 const AboutUs: FC = () => {
   const [scrollY, setScrollY] = useState(0);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
@@ -86,45 +87,89 @@ const AboutUs: FC = () => {
   }, []);
 
   const NavigationHeader: FC = () => (
-    <header className={`fixed top-0 w-full z-40 transition-all duration-300 ${
-      scrollY > 50 ? 'bg-blue-900/95 backdrop-blur-md shadow-lg' : 'bg-blue-900'
+    <header className={`fixed top-0 w-full z-50 transition-all duration-300 ${
+      scrollY > 50 || isMobileMenuOpen ? 'bg-blue-900 shadow-lg' : 'bg-blue-900'
     } text-white`}>
-      <div className="header-container">
-        <div className="header-content">
-          <div className="logo-container">
-            <div className="flex items-center mr-3">
-              <img src={navLogo} alt="PUPSMB Logo" className="w-14 h-14 object-contain drop-shadow-sm" />
+      <div className="header-container relative">
+        <div className="header-content flex justify-between items-center py-4">
+          <div className="logo-container flex items-center gap-3">
+            <div className="flex items-center">
+              <img src={navLogo} alt="PUPSMB Logo" className="w-10 h-10 sm:w-14 sm:h-14 object-contain drop-shadow-sm" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">PUPSMB TransparaTech</h1>
-              <p className="text-white text-sm">Official Management System of PUPSMB</p>
+              <h1 className="text-lg sm:text-xl font-bold text-white leading-tight">PUPSMB TransparaTech</h1>
+              <p className="text-white text-xs sm:text-sm opacity-90">Official Management System of PUPSMB</p>
             </div>
           </div>
           
-          <nav className="nav-menu flex items-center">
-            <Link to="/" className="nav-link !text-white">Home</Link>
-            <Link to="/about" className="nav-link !text-white">About</Link>
-            <Link to="/#features" className="nav-link !text-white">Features</Link>
-            <Link to="/auth/signup" className="nav-link !text-white mr-4">Get Started</Link>
+          {/* Desktop Navigation */}
+          <nav className="hidden lg:flex items-center gap-8">
+            <Link to="/" className="nav-link !text-white hover:text-blue-200 transition-colors">Home</Link>
+            <Link to="/about" className="nav-link !text-white hover:text-blue-200 transition-colors">About</Link>
+            <Link to="/#features" className="nav-link !text-white hover:text-blue-200 transition-colors">Features</Link>
+            <Link to="/auth/signup" className="nav-link !text-white hover:text-blue-200 transition-colors">Get Started</Link>
 
-            {/* Header-aligned Log In / Sign Up buttons */}
-            <div className="ml-6 flex items-center gap-3">
+            <div className="flex items-center gap-3 ml-4">
               <Link
                 to="/auth/signin"
-                className="px-3 py-1 rounded-md text-sm font-extrabold text-white border border-white/20 transition-colors duration-150 hover:bg-white/20 hover:shadow-md"
-                style={{ background: 'transparent' }}
+                className="px-4 py-2 rounded-md text-sm font-bold text-white border border-white/30 transition-all duration-200 hover:bg-white/10 hover:border-white/50"
               >
                 Log In
               </Link>
 
               <Link
                 to="/auth/signup"
-                className="px-3 py-1 rounded-md text-sm font-extrabold bg-white text-[#365487] transition-colors duration-150 hover:bg-blue-100 hover:text-blue-900 hover:shadow-md border border-white/30"
+                className="px-4 py-2 rounded-md text-sm font-bold bg-white text-blue-900 transition-all duration-200 hover:bg-blue-50 shadow-sm"
               >
                 Sign Up
               </Link>
             </div>
           </nav>
+
+          {/* Mobile Menu Button */}
+          <button 
+            className="lg:hidden p-2 text-white hover:bg-white/10 rounded-lg transition-colors focus:outline-none"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            {isMobileMenuOpen ? (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
+        </div>
+
+        {/* Mobile Menu Dropdown */}
+        <div className={`lg:hidden absolute top-full left-0 w-full bg-blue-900 border-t border-white/10 shadow-xl transition-all duration-300 overflow-hidden ${
+          isMobileMenuOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
+        }`}>
+          <div className="flex flex-col p-6 space-y-4">
+            <Link to="/" className="text-left text-white text-lg font-medium py-2 border-b border-white/10 hover:text-blue-200 transition-colors" onClick={() => setIsMobileMenuOpen(false)}>Home</Link>
+            <Link to="/about" className="text-left text-white text-lg font-medium py-2 border-b border-white/10 hover:text-blue-200 transition-colors" onClick={() => setIsMobileMenuOpen(false)}>About</Link>
+            <Link to="/#features" className="text-left text-white text-lg font-medium py-2 border-b border-white/10 hover:text-blue-200 transition-colors" onClick={() => setIsMobileMenuOpen(false)}>Features</Link>
+            
+            <div className="flex flex-col gap-3 mt-4 pt-2">
+              <Link
+                to="/auth/signin"
+                className="w-full text-center px-4 py-3 rounded-lg text-base font-bold text-white border border-white/30 hover:bg-white/10 transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Log In
+              </Link>
+              <Link
+                to="/auth/signup"
+                className="w-full text-center px-4 py-3 rounded-lg text-base font-bold bg-white text-blue-900 hover:bg-blue-50 transition-colors shadow-sm"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Sign Up
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </header>

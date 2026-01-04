@@ -103,30 +103,30 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity }) => {
   const assignedTo = details?.reviewer || details?.approver || details?.rejector || details?.assignee || '';
 
   return (
-    <div className="bg-white rounded-md border border-gray-200 p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 p-6">
       <div className="flex justify-between items-start gap-4">
         <div className="flex items-start gap-4">
-          <div className={`w-8 h-8 flex items-center justify-center rounded-full bg-${color}-100`}>
-            {getActivityIcon(icon, color)}
+          <div className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 font-bold text-lg border border-gray-200 dark:border-gray-700 shrink-0">
+            {user.charAt(0).toUpperCase()}
           </div>
 
 
           <div className="min-w-0">
-            <div className="text-lg text-gray-900 mb-2">
-              <span className="text-gray-900">{user}</span>{' '}
-              <span className="text-gray-500">{verb}</span>{' '}
-              <span className="text-gray-900">{docName}</span>
+            <div className="text-lg text-gray-900 dark:text-white mb-2">
+              <span className="text-gray-900 dark:text-white font-medium">{user}</span>{' '}
+              <span className="text-gray-500 dark:text-gray-400">{verb}</span>{' '}
+              <span className="text-gray-900 dark:text-white font-medium">{docName}</span>
             </div>
 
             {(category || assignedTo) && (
-              <div className="text-sm text-gray-500 mt-1 mb-2">
+              <div className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-2">
                 {category}{category && assignedTo ? ' • ' : ''}{assignedTo ? `Assigned to: ${assignedTo}` : ''}
               </div>
             )}
 
             {/* comment/note */}
             {(details?.comment || details?.comments || details?.reason) && (
-              <div className="bg-gray-50 border-l-2 border-purple-200 px-3 py-2 mt-2 text-sm text-gray-600 rounded-sm">
+              <div className="bg-gray-50 dark:bg-gray-700/50 border-l-2 border-purple-200 dark:border-purple-500 px-3 py-2 mt-2 text-sm text-gray-600 dark:text-gray-300 rounded-sm">
                 {details?.comment || details?.comments || details?.reason}
               </div>
             )}
@@ -134,8 +134,8 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity }) => {
         </div>
 
         <div className="text-right">
-          <div className="text-sm text-gray-500">{formatTimestamp(timestamp)}</div>
-          <div className="text-sm text-gray-500">{new Date(timestamp).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{formatTimestamp(timestamp)}</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{new Date(timestamp).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
         </div>
       </div>
     </div>

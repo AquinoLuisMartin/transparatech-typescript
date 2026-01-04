@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import PageMeta from '../../../components/common/PageMeta';
+import axios from 'axios';
+import { useAuth } from '../../../hooks/useAuth';
 
 interface UploadDocumentsProps {
   onClose?: () => void;
@@ -8,6 +10,7 @@ interface UploadDocumentsProps {
 }
 
 const UploadDocuments: React.FC<UploadDocumentsProps> = ({ onClose, onSubmitSuccess, embedded = false }) => {
+  const { token } = useAuth();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -24,11 +27,31 @@ const UploadDocuments: React.FC<UploadDocumentsProps> = ({ onClose, onSubmitSucc
   const toastTimeoutRef = useRef<number | null>(null);
   const closeTimeoutRef = useRef<number | null>(null);
 
-  const categories = [
-    'Financial Report',
-    'Turnover of Assets',
-    'Expense Summary'
-  ];
+  const [categories, setCategories] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await axios.get('/api/v1/submissions/categories', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.data.success) {
+          setCategories(response.data.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch categories:', error);
+        setCategories([
+          'Financial Report',
+          'Turnover of Assets',
+          'Expense Summary'
+        ]);
+      }
+    };
+
+    if (token) {
+      fetchCategories();
+    }
+  }, [token]);
 
   const priorities = [
     { value: 'low', label: 'Low', color: 'text-green-600' },
@@ -96,55 +119,77 @@ const UploadDocuments: React.FC<UploadDocumentsProps> = ({ onClose, onSubmitSucc
     setIsUploading(true);
     setUploadProgress(0);
 
-    // Simulate upload progress
-    const progressInterval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(progressInterval);
-          setIsUploading(false);
-          // Here you would typically show a success message and reset the form
-          const newSubmission = {
-            id: Date.now(),
-            title: formData.title || 'Untitled Document',
-            type: formData.category || 'Other',
-            submittedDate: new Date().toISOString().slice(0, 10),
-            status: 'pending',
-            reviewer: 'Pending'
-          };
-          // notify parent that submission succeeded
-          if (onSubmitSuccess) onSubmitSuccess(newSubmission);
-
-          // Reset the form to initial empty state immediately after success
-          setFormData({
-            title: '',
-            description: '',
-            category: '',
-            priority: 'medium',
-            tags: '',
-            files: []
-          });
-          setIsDragOver(false);
-          setUploadProgress(0);
-
-          // Show a temporary toast notification
-          setShowToast(true);
-          // Hide toast after a few seconds
-          toastTimeoutRef.current = window.setTimeout(() => {
-            setShowToast(false);
-          }, 3500);
-
-          // Close modal shortly after showing toast so user sees confirmation briefly
-          if (onClose) {
-            closeTimeoutRef.current = window.setTimeout(() => {
-              onClose();
-            }, 1800);
+    try {
+      // Simulate upload progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
           }
+          return prev + 10;
+        });
+      }, 200);
 
-          return 100;
-        }
-        return prev + 10;
+      // Prepare FormData
+      const formDataToSend = new FormData();
+      formDataToSend.append('title', formData.title);
+      formDataToSend.append('category', formData.category);
+      formDataToSend.append('type', formData.category); // Mapping category to type
+      formDataToSend.append('description', formData.description);
+      formDataToSend.append('priority', formData.priority);
+      
+      // Append files
+      formData.files.forEach(file => {
+        formDataToSend.append('files', file);
       });
-    }, 200);
+
+      const response = await axios.post('/api/v1/submissions', formDataToSend, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      if (response.data.success) {
+        setUploadProgress(100);
+        
+        // notify parent that submission succeeded
+        if (onSubmitSuccess) onSubmitSuccess(response.data.data);
+
+        // Reset the form to initial empty state immediately after success
+        setFormData({
+          title: '',
+          description: '',
+          category: '',
+          priority: 'medium',
+          tags: '',
+          files: []
+        });
+        setIsDragOver(false);
+        setUploadProgress(0);
+
+        // Show a temporary toast notification
+        setShowToast(true);
+        // Hide toast after a few seconds
+        toastTimeoutRef.current = window.setTimeout(() => {
+          setShowToast(false);
+        }, 3500);
+
+        // Close modal shortly after showing toast so user sees confirmation briefly
+        if (onClose) {
+          closeTimeoutRef.current = window.setTimeout(() => {
+            onClose();
+          }, 1800);
+        }
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
+      setUploadProgress(0);
+      alert('Failed to submit document. Please try again.');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   useEffect(() => {

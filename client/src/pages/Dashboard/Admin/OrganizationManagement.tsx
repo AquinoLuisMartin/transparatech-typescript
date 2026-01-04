@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 import { 
   PencilIcon, 
   TrashBinIcon,
@@ -30,132 +31,53 @@ const OrganizationManagement = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
 
-  // Organization options from signup form
-  const organizationOptions = [
-    { value: 'Alliance of Computer Engineering Students', label: 'Alliance of Computer Engineering Students', acronym: 'ACES' },
-    { value: 'Integrated Students in Information Technology Education', label: 'Integrated Students in Information Technology Education', acronym: 'iSITE' },
-    { value: 'Junior Philippine Institute of Accountancy - Sta Maria', label: 'Junior Philippine Institute of Accountancy - Sta Maria', acronym: 'JPIA' },
-    { value: 'Association of Future Teachers', label: 'Association of Future Teachers', acronym: 'AFT' },
-    { value: 'Hospitality Management Society', label: 'Hospitality Management Society', acronym: 'HMSOC' },
-    { value: 'Chamber of Entrepreneurs and Managers', label: 'Chamber of Entrepreneurs and Managers', acronym: 'CEM' },
-    { value: 'Diploma in Office Management SY-Quest', label: 'Diploma in Office Management SY-Quest', acronym: 'DOMT' }
-  ];
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data based on provided organizations
-  const [organizations, setOrganizations] = useState<Organization[]>([
-    {
-      id: '1',
-      name: 'Alliance of Computer Engineering Students',
-      acronym: 'ACES',
-      description: 'Student organization for Computer Engineering students promoting technical excellence and innovation.',
-      status: 'active',
-      memberCount: 156,
-      officerCount: 8,
-      submissionCount: 23,
-      establishedDate: '2018-08-15',
-      contactEmail: 'aces@pupsmb.edu.ph',
-      president: 'Maria Santos',
-      adviser: 'Prof. John Dela Cruz',
-      lastActivity: '2025-11-01'
-    },
-    {
-      id: '2',
-      name: 'Integrated Students in Information Technology Education',
-      acronym: 'iSITE',
-      description: 'Organization dedicated to advancing IT education and fostering technological innovation among students.',
-      status: 'active',
-      memberCount: 203,
-      officerCount: 10,
-      submissionCount: 31,
-      establishedDate: '2017-09-20',
-      contactEmail: 'isite@pupsmb.edu.ph',
-      president: 'Carlos Rodriguez',
-      adviser: 'Prof. Anna Reyes',
-      lastActivity: '2025-10-30'
-    },
-    {
-      id: '3',
-      name: 'Association of Future Teachers',
-      acronym: 'AFT',
-      description: 'Professional development organization for education students preparing for teaching careers.',
-      status: 'active',
-      memberCount: 189,
-      officerCount: 9,
-      submissionCount: 18,
-      establishedDate: '2016-06-10',
-      contactEmail: 'aft@pupsmb.edu.ph',
-      president: 'Jennifer Garcia',
-      adviser: 'Prof. Michael Torres',
-      lastActivity: '2025-10-28'
-    },
-    {
-      id: '4',
-      name: 'Hospitality Management Society',
-      acronym: 'HMSOC',
-      description: 'Organization promoting excellence in hospitality and tourism management education.',
-      status: 'active',
-      memberCount: 134,
-      officerCount: 7,
-      submissionCount: 15,
-      establishedDate: '2019-03-12',
-      contactEmail: 'hmsoc@pupsmb.edu.ph',
-      president: 'Patricia Cruz',
-      adviser: 'Prof. Roberto Mendoza',
-      lastActivity: '2025-10-25'
-    },
-    {
-      id: '5',
-      name: 'Chamber of Entrepreneurs and Managers',
-      acronym: 'CEM',
-      description: 'Business-focused organization developing entrepreneurial skills and management expertise.',
-      status: 'active',
-      memberCount: 167,
-      officerCount: 8,
-      submissionCount: 27,
-      establishedDate: '2017-11-08',
-      contactEmail: 'cem@pupsmb.edu.ph',
-      president: 'Ricardo Fernandez',
-      adviser: 'Prof. Carmen Villanueva',
-      lastActivity: '2025-11-02'
-    },
-    {
-      id: '6',
-      name: 'Junior Philippine Institute of Accountancy - Sta Maria',
-      acronym: 'JPIA',
-      description: 'Professional organization for accounting students promoting ethical practice and excellence.',
-      status: 'active',
-      memberCount: 145,
-      officerCount: 9,
-      submissionCount: 22,
-      establishedDate: '2015-05-18',
-      contactEmail: 'jpia@pupsmb.edu.ph',
-      president: 'Stephanie Lim',
-      adviser: 'Prof. Eduardo Santos',
-      lastActivity: '2025-10-29'
-    },
-    {
-      id: '7',
-      name: 'Diploma in Office Management SY-Quest',
-      acronym: 'DOMT',
-      description: 'Organization for office management students focusing on administrative excellence and professional development.',
-      status: 'inactive',
-      memberCount: 78,
-      officerCount: 5,
-      submissionCount: 8,
-      establishedDate: '2020-01-22',
-      contactEmail: 'domt@pupsmb.edu.ph',
-      president: 'Angela Rivera',
-      adviser: 'Prof. Francis Aquino',
-      lastActivity: '2025-09-15'
+  useEffect(() => {
+    fetchOrganizations();
+  }, []);
+
+  const fetchOrganizations = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await axios.get('/api/v1/organizations', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        setOrganizations(response.data.data.map((org: any) => ({
+          id: org.id,
+          name: org.name,
+          acronym: org.acronym,
+          description: org.description,
+          status: org.status,
+          memberCount: org.memberCount,
+          officerCount: org.officerCount,
+          submissionCount: org.submissionCount,
+          establishedDate: org.established_date,
+          contactEmail: org.contact_email,
+          president: org.president,
+          adviser: org.adviser,
+          lastActivity: org.lastActivity
+        })));
+      }
+    } catch (err) {
+      console.error('Failed to fetch organizations:', err);
+      setError('Failed to load organizations');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
   const [newOrg, setNewOrg] = useState({
     name: '',
+    acronym: '',
     description: '',
     contactEmail: '',
     president: '',
-    adviser: ''
+    adviser: '',
+    establishedDate: ''
   });
 
   const filteredOrganizations = organizations.filter(org => {
@@ -165,51 +87,88 @@ const OrganizationManagement = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const handleAddOrganization = () => {
-    const selectedOrgOption = organizationOptions.find(opt => opt.value === newOrg.name);
-    const organization: Organization = {
-      id: Date.now().toString(),
-      name: newOrg.name,
-      acronym: selectedOrgOption?.acronym || '',
-      description: newOrg.description,
-      status: 'active',
-      memberCount: 0,
-      officerCount: 0,
-      submissionCount: 0,
-      establishedDate: new Date().toISOString().split('T')[0],
-      contactEmail: newOrg.contactEmail,
-      president: newOrg.president,
-      adviser: newOrg.adviser,
-      lastActivity: new Date().toISOString().split('T')[0]
-    };
+  const handleAddOrganization = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await axios.post('/api/v1/organizations', {
+        name: newOrg.name,
+        acronym: newOrg.acronym,
+        description: newOrg.description,
+        contactEmail: newOrg.contactEmail,
+        president: newOrg.president,
+        adviser: newOrg.adviser,
+        establishedDate: newOrg.establishedDate || new Date().toISOString().split('T')[0]
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
-    setOrganizations([...organizations, organization]);
-    setNewOrg({ name: '', description: '', contactEmail: '', president: '', adviser: '' });
-    setShowAddModal(false);
+      if (response.data.success) {
+        fetchOrganizations();
+        setNewOrg({ name: '', acronym: '', description: '', contactEmail: '', president: '', adviser: '', establishedDate: '' });
+        setShowAddModal(false);
+      }
+    } catch (err) {
+      console.error('Failed to create organization:', err);
+    }
   };
 
-  const handleEditOrganization = () => {
+  const handleEditOrganization = async () => {
     if (selectedOrg) {
-      setOrganizations(organizations.map(org => 
-        org.id === selectedOrg.id ? selectedOrg : org
-      ));
-      setShowEditModal(false);
-      setSelectedOrg(null);
+      try {
+        const token = localStorage.getItem('accessToken');
+        const response = await axios.put(`/api/v1/organizations/${selectedOrg.id}`, {
+          name: selectedOrg.name,
+          acronym: selectedOrg.acronym,
+          description: selectedOrg.description,
+          status: selectedOrg.status,
+          contactEmail: selectedOrg.contactEmail,
+          president: selectedOrg.president,
+          adviser: selectedOrg.adviser,
+          establishedDate: selectedOrg.establishedDate
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (response.data.success) {
+          fetchOrganizations();
+          setShowEditModal(false);
+          setSelectedOrg(null);
+        }
+      } catch (err) {
+        console.error('Failed to update organization:', err);
+      }
     }
   };
 
-  const handleDeleteOrganization = (id: string) => {
+  const handleDeleteOrganization = async (id: string) => {
     if (confirm('Are you sure you want to delete this organization?')) {
-      setOrganizations(organizations.filter(org => org.id !== id));
+      try {
+        const token = localStorage.getItem('accessToken');
+        await axios.delete(`/api/v1/organizations/${id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        fetchOrganizations();
+      } catch (err) {
+        console.error('Failed to delete organization:', err);
+      }
     }
   };
 
-  const toggleOrganizationStatus = (id: string) => {
-    setOrganizations(organizations.map(org => 
-      org.id === id 
-        ? { ...org, status: org.status === 'active' ? 'inactive' : 'active' }
-        : org
-    ));
+  const toggleOrganizationStatus = async (id: string) => {
+    const org = organizations.find(o => o.id === id);
+    if (org) {
+      try {
+        const token = localStorage.getItem('accessToken');
+        await axios.put(`/api/v1/organizations/${id}`, {
+          status: org.status === 'active' ? 'inactive' : 'active'
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        fetchOrganizations();
+      } catch (err) {
+        console.error('Failed to update organization status:', err);
+      }
+    }
   };
 
   const totalMembers = organizations.reduce((sum, org) => sum + org.memberCount, 0);

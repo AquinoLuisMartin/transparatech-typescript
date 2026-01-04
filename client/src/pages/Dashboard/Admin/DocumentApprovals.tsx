@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageMeta from '../../../components/common/PageMeta';
+import axios from 'axios';
+import { useAuth } from '../../../hooks/useAuth';
 
 interface Submission {
   id: number;
@@ -25,6 +27,11 @@ interface Submission {
 }
 
 const DocumentApprovals: React.FC = () => {
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+
   const [filterStatus, setFilterStatus] = useState('pending');
   const [filterPriority, setFilterPriority] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -38,97 +45,44 @@ const DocumentApprovals: React.FC = () => {
   const [toastType, setToastType] = useState<'success' | 'info'>('success');
   const [rejectionReason, setRejectionReason] = useState('');
 
-  const submissions = [
-    {
-      id: 1,
-      title: "Monthly Budget Report - October 2024",
-      description: "Comprehensive monthly budget analysis including variance reports and Q4 projections for Student Council operations.",
-      officer: "John Doe",
-      organization: "Student Council",
-      category: "Financial Report",
-      submittedDate: "2024-11-01T10:30:00Z",
-      priority: "high",
-      status: "pending",
-      files: ["budget_report_oct.pdf", "supporting_data.xlsx", "variance_analysis.docx"],
-      estimatedReviewTime: "2-3 hours",
-      comments: []
-    },
-    {
-      id: 2,
-      title: "Equipment Purchase Receipt - Laptops",
-      description: "Purchase receipt and warranty documentation for 5 new laptops acquired for the Engineering Club development team.",
-      officer: "Jane Smith",
-      organization: "Engineering Club", 
-      category: "Purchase Receipt",
-      submittedDate: "2024-10-31T14:15:00Z",
-      priority: "medium",
-      status: "pending",
-      files: ["laptop_receipt.pdf", "warranty_docs.pdf"],
-      estimatedReviewTime: "30-45 minutes",
-      comments: []
-    },
-    {
-      id: 3,
-      title: "Event Expense Report - Cultural Festival",
-      description: "Complete expense breakdown for the annual cultural festival including vendor payments, equipment rental, and logistics costs.",
-      officer: "Mike Johnson",
-      organization: "Drama Society",
-      category: "Event Expense",
-      submittedDate: "2024-10-30T16:45:00Z",
-      priority: "low",
-      status: "pending",
-      files: ["festival_expenses.pdf", "vendor_receipts.zip"],
-      estimatedReviewTime: "1-2 hours",
-      comments: []
-    },
-    {
-      id: 4,
-      title: "Training Workshop Receipt",
-      description: "Receipt and documentation for leadership training workshop attended by organization officers.",
-      officer: "Sarah Wilson",
-      organization: "Student Government",
-      category: "Training Expense",
-      submittedDate: "2024-10-29T09:20:00Z",
-      priority: "medium",
-      status: "approved",
-      files: ["training_receipt.pdf", "certificate.pdf"],
-      estimatedReviewTime: "30 minutes",
-      reviewedBy: "Admin Team",
-      reviewedDate: "2024-10-30T11:00:00Z",
-      comments: [
-        {
-          id: 1,
-          author: "Admin Team",
-          content: "All documentation complete. Training aligns with organizational development goals.",
-          timestamp: "2024-10-30T11:00:00Z"
+  useEffect(() => {
+    const fetchSubmissions = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const response = await axios.get('/api/v1/submissions', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (response.data.success) {
+          const mappedSubmissions = response.data.data.map((s: any) => ({
+            id: s.id,
+            title: s.title,
+            description: s.description,
+            officer: `${s.user_first_name} ${s.user_last_name}`,
+            organization: s.user_organization || 'N/A',
+            category: s.category || s.type,
+            submittedDate: s.created_at,
+            priority: s.priority || 'medium',
+            status: s.status,
+            files: s.files || [],
+            estimatedReviewTime: 'N/A', // Not provided by API yet
+            reviewedBy: s.reviewer_first_name ? `${s.reviewer_first_name} ${s.reviewer_last_name}` : undefined,
+            reviewedDate: s.approved_date || s.rejected_date,
+            rejectionReason: s.rejection_reason,
+            comments: [] // Not provided by API yet
+          }));
+          setSubmissions(mappedSubmissions);
         }
-      ]
-    },
-    {
-      id: 5,
-      title: "Office Supplies Purchase Order",
-      description: "Purchase order for standard office supplies including stationery, printer cartridges, and organizational materials.",
-      officer: "David Brown",
-      organization: "Environmental Club",
-      category: "Office Supplies",
-      submittedDate: "2024-10-28T13:30:00Z",
-      priority: "low",
-      status: "rejected",
-      files: ["purchase_order.pdf"],
-      estimatedReviewTime: "15-20 minutes",
-      reviewedBy: "Finance Admin",
-      reviewedDate: "2024-10-29T10:15:00Z",
-      rejectionReason: "Vendor not in approved supplier list. Please resubmit with approved vendor.",
-      comments: [
-        {
-          id: 1,
-          author: "Finance Admin",
-          content: "Please use one of our pre-approved office supply vendors. Contact procurement for the approved vendor list.",
-          timestamp: "2024-10-29T10:15:00Z"
-        }
-      ]
-    }
-  ];
+      } catch (err) {
+        console.error('Error fetching submissions:', err);
+        setError('Failed to load submissions');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSubmissions();
+  }, []);
 
   const statusOptions = [
     { value: 'all', label: 'All Status' },
@@ -181,6 +135,7 @@ const DocumentApprovals: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
@@ -199,26 +154,54 @@ const DocumentApprovals: React.FC = () => {
   };
 
   // Handle confirmation
-  const handleConfirm = () => {
-    if (modalType === 'approve') {
-      setToastMessage('Submission approved successfully!');
-      setToastType('success');
-    } else {
-      // Check if rejection reason is provided
-      if (rejectionReason.trim() === '') {
-        return; // Don't proceed if no reason provided
+  const handleConfirm = async () => {
+    if (!selectedSubmission) return;
+
+    try {
+      const token = localStorage.getItem('accessToken');
+      const status = modalType === 'approve' ? 'approved' : 'rejected';
+      
+      await axios.put(`/api/v1/submissions/${selectedSubmission.id}/status`, {
+        status,
+        rejectionReason: modalType === 'reject' ? rejectionReason : undefined
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      // Update local state
+      setSubmissions(prev => prev.map(s => 
+        s.id === selectedSubmission.id 
+          ? { 
+              ...s, 
+              status, 
+              rejectionReason: modalType === 'reject' ? rejectionReason : undefined, 
+              reviewedDate: new Date().toISOString(), 
+              reviewedBy: `${user?.firstName} ${user?.lastName}` 
+            } 
+          : s
+      ));
+
+      if (modalType === 'approve') {
+        setToastMessage('Submission approved successfully!');
+        setToastType('success');
+      } else {
+        setToastMessage('Submission rejected. The officer will be notified.');
+        setToastType('info');
       }
-      setToastMessage('Submission rejected. The officer will be notified.');
+      setShowModal(false);
+      setShowToast(true);
+      setRejectionReason('');
+      
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => {
+        setShowToast(false);
+      }, 3000);
+    } catch (err) {
+      console.error('Error updating submission:', err);
+      setToastMessage('Failed to update submission status');
       setToastType('info');
+      setShowToast(true);
     }
-    setShowModal(false);
-    setShowToast(true);
-    setRejectionReason('');
-    
-    // Auto-hide toast after 3 seconds
-    setTimeout(() => {
-      setShowToast(false);
-    }, 3000);
   };
 
   // Close modal
@@ -249,7 +232,6 @@ const DocumentApprovals: React.FC = () => {
     let mimeType = 'text/plain';
     
     if (fileName.endsWith('.pdf')) {
-      // Create a simple PDF-like content
       dummyContent = `%PDF-1.4
 1 0 obj
 <<
@@ -304,65 +286,8 @@ startxref
 380
 %%EOF`;
       mimeType = 'application/pdf';
-    } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-      dummyContent = `File Name: ${fileName}
-Type: Excel Spreadsheet
-Status: Dummy file for demonstration
-
-This is a placeholder for the actual Excel file.
-In a real application, this would contain:
-- Financial data
-- Charts and graphs  
-- Formulas and calculations
-- Multiple worksheets
-
-Current file: ${fileName}
-Date accessed: ${new Date().toLocaleString()}`;
-      mimeType = 'text/plain';
-    } else if (fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
-      dummyContent = `Document: ${fileName}
-Type: Word Document
-Status: Dummy file for demonstration
-
-This is a placeholder document that represents ${fileName}.
-
-In a production environment, this would contain:
-- Formatted text
-- Images and tables
-- Document metadata
-- Version history
-
-File accessed: ${new Date().toLocaleString()}
-System: TransparaTech Document Management`;
-      mimeType = 'text/plain';
-    } else if (fileName.endsWith('.zip')) {
-      dummyContent = `Archive: ${fileName}
-Type: ZIP Archive
-Status: Dummy file listing
-
-Contents (simulated):
-- receipt_001.pdf
-- receipt_002.pdf  
-- receipt_003.pdf
-- summary.xlsx
-- notes.txt
-
-Total files: 5
-Archive size: ~2.3 MB (simulated)
-Created: ${new Date().toLocaleDateString()}
-
-Note: This is a demonstration file for ${fileName}`;
-      mimeType = 'text/plain';
     } else {
-      dummyContent = `File: ${fileName}
-Type: Document
-Status: Dummy file for demonstration
-
-This is a placeholder for ${fileName}.
-In a real application, this would open the actual file.
-
-Accessed: ${new Date().toLocaleString()}
-System: TransparaTech Document Management System`;
+      dummyContent = `File: ${fileName}\nType: Document\nStatus: Dummy file for demonstration\n\nThis is a placeholder for ${fileName}.`;
       mimeType = 'text/plain';
     }
 
@@ -380,6 +305,14 @@ System: TransparaTech Document Management System`;
   const pendingCount = submissions.filter(s => s.status === 'pending').length;
   const approvedCount = submissions.filter(s => s.status === 'approved').length;
   const rejectedCount = submissions.filter(s => s.status === 'rejected').length;
+
+  if (loading) {
+    return <div className="p-6 text-center">Loading submissions...</div>;
+  }
+
+  if (error) {
+    return <div className="p-6 text-center text-red-600">{error}</div>;
+  }
 
   return (
     <>

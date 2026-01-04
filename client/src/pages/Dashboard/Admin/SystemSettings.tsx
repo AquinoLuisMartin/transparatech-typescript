@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 import { 
   UserIcon,
   LockIcon,
@@ -36,6 +37,8 @@ interface UserRole {
 const SystemSettings = () => {
   const [activeTab, setActiveTab] = useState<'general' | 'security' | 'permissions' | 'maintenance'>('general');
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [settings, setSettings] = useState<SystemSettings>({
     siteName: 'TransparaTech Student Transparency System',
@@ -54,6 +57,27 @@ const SystemSettings = () => {
     backupFrequency: 'daily',
     dataRetentionPeriod: 365
   });
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await axios.get('/api/v1/settings', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        setSettings(response.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch settings:', err);
+      setError('Failed to load settings');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const userRoles: UserRole[] = [
     {
@@ -90,10 +114,21 @@ const SystemSettings = () => {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleSaveSettings = () => {
-    // Mock save functionality
-    setShowSaveConfirmation(true);
-    setTimeout(() => setShowSaveConfirmation(false), 3000);
+  const handleSaveSettings = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await axios.put('/api/v1/settings', settings, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data.success) {
+        setShowSaveConfirmation(true);
+        setTimeout(() => setShowSaveConfirmation(false), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to save settings:', err);
+      // Could add error state handling here
+    }
   };
 
   const handleFileTypeToggle = (fileType: string) => {
@@ -443,6 +478,15 @@ const SystemSettings = () => {
       </div>
     </div>
   );
+
+  if (loading) {
+    return (
+      <div className="p-12 text-center">
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <p className="mt-4 text-gray-600 dark:text-gray-400">Loading settings...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-white dark:bg-gray-900 min-h-screen">

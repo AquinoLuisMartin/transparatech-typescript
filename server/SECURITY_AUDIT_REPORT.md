@@ -167,3 +167,12 @@ The TransparaTech backend is now **PRODUCTION-READY** with:
 
 *Last Updated*: December 2024  
 *Audited By*: GitHub Copilot AI Assistant
+### ✅ Credential Validation Hardening
+
+#### 7. Login Credential Verification
+**Status: ✅ NEWLY IMPLEMENTED**
+
+- **Location**: `server/src/controllers/authController.js`
+- **Issue Addressed**: Fixed a vulnerability where providing a valid Email allowed login even if an incorrect Student Number was also provided (due to frontend sending both).
+- **Implementation**: Added strict verification logic: if both Email and Student Number are present in the login request, the system now verifies that the Student Number matches the user account associated with the Email.
+- **Result**: Prevents credential spoofing attempts where a user might try to modify the student number field while using a valid email.

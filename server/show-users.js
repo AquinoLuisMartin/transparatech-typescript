@@ -11,7 +11,7 @@ async function showExistingUsers() {
   });
 
   try {
-    console.log('👥 Your Existing Users in Database:\n');
+    console.log('Your Existing Users in Database:\n');
     
     const result = await pool.query(`
       SELECT id, first_name, last_name, middle_initial, email, student_number, 
@@ -35,16 +35,16 @@ async function showExistingUsers() {
         console.log('');
       });
       
-      console.log('🔐 To login, use ANY of the above credentials with:');
+      console.log('To login, use ANY of the above credentials with:');
       console.log('   - Their EMAIL + password you used during signup');
       console.log('   - Their STUDENT NUMBER + password (if they have one)');
       console.log('');
-      console.log('📍 Login at: http://localhost:5173/auth/signin');
+      console.log('Login at: http://localhost:5173/auth/signin');
     }
     
     await pool.end();
   } catch (error) {
-    console.error('❌ Error fetching users:', error.message);
+    console.error('Error fetching users:', error.message);
     await pool.end();
   }
 }

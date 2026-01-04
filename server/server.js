@@ -8,45 +8,45 @@ const { connectDB } = require('./src/config/database');
 //   apiKey: process.env.GEMINI_API_KEY
 // });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 const startServer = async () => {
   try {
-    console.log('🚀 Starting Transparatech Server...');
-    console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔧 Port: ${PORT}`);
+    console.log('Starting Transparatech Server...');
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`Port: ${PORT}`);
     
     // Test database connection (non-blocking)
     try {
-      console.log('🔗 Testing database connection...');
+      console.log('Testing database connection...');
       await connectDB();
-      console.log('✅ Database connected successfully');
+      console.log('Database connected successfully');
     } catch (dbError) {
-      console.warn('⚠️  Database connection failed, but starting server anyway');
-      console.warn('⚠️  Database Error:', dbError.message);
-      console.warn('💡 Please ensure PostgreSQL is running and configured correctly');
-      console.warn('💡 Server will continue to run for health checks and diagnostics');
+      console.warn('Database connection failed, but starting server anyway');
+      console.warn('Database Error:', dbError.message);
+      console.warn('Please ensure PostgreSQL is running and configured correctly');
+      console.warn('Server will continue to run for health checks and diagnostics');
     }
 
     // Start server
     const server = app.listen(PORT, (error) => {
       if (error) {
-        console.error('❌ Failed to start server:', error);
+        console.error('Failed to start server:', error);
         process.exit(1);
       }
-      console.log(`✅ Server is running on port ${PORT}`);
-      console.log(`🔍 Health check: http://localhost:${PORT}/health`);
-      console.log(`🔑 Auth endpoint: http://localhost:${PORT}/api/v1/auth/login`);
-      console.log(`🌐 CORS enabled for: ${process.env.CLIENT_URL || 'http://localhost:5173'}`);
+      console.log(`Server is running on port ${PORT}`);
+      console.log(`Health check: http://localhost:${PORT}/health`);
+      console.log(`Auth endpoint: http://localhost:${PORT}/api/v1/auth/login`);
+      console.log(`CORS enabled for: ${process.env.CLIENT_URL || 'http://localhost:5173'}`);
     });
 
     // Handle server errors
     server.on('error', (error) => {
       if (error.code === 'EADDRINUSE') {
-        console.error(`❌ Port ${PORT} is already in use`);
-        console.log('💡 Try stopping other servers or use a different port');
+        console.error(`Port ${PORT} is already in use`);
+        console.log('Try stopping other servers or use a different port');
       } else {
-        console.error('❌ Server error:', error);
+        console.error('Server error:', error);
       }
       process.exit(1);
     });

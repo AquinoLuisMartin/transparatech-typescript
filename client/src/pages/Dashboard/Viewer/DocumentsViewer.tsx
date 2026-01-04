@@ -1,72 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import PageMeta from '../../../components/common/PageMeta';
 import Calendar from '../../../components/ui/calendar';
 
 const DocumentsViewer: React.FC = () => {
-  const documents = [
-    {
-      id: 1,
-      title: "Annual Financial Report 2024",
-      category: "Financial Report",
-      uploadDate: "2024-01-15",
-      size: "2.3 MB",
-      type: "PDF",
-      description: "Comprehensive financial overview for fiscal year 2024",
-      fileUrl: '/files/annual-financial-report-2024.pdf'
-    },
-    {
-      id: 2,
-      title: "Budget Allocation Summary",
-      category: "Expense Summary",
-      uploadDate: "2024-01-10",
-      size: "1.8 MB",
-      type: "PDF",
-      description: "Detailed breakdown of budget allocations across departments",
-      fileUrl: '/files/budget-allocation-summary.pdf'
-    },
-    {
-      id: 3,
-      title: "Procurement Guidelines",
-      category: "Turnover of Assets",
-      uploadDate: "2024-01-08",
-      size: "950 KB",
-      type: "PDF",
-      description: "Updated procurement policies and procedures",
-      fileUrl: '/files/procurement-guidelines.pdf'
-    },
-    {
-      id: 4,
-      title: "Performance Metrics Q4 2023",
-      category: "Expense Summary",
-      uploadDate: "2024-01-05",
-      size: "1.5 MB",
-      type: "PDF",
-      description: "Quarterly performance indicators and achievements",
-      fileUrl: '/files/performance-metrics-q4-2023.pdf'
-    },
-    {
-      id: 5,
-      title: "Organizational Structure",
-      category: "Turnover of Assets",
-      uploadDate: "2024-01-03",
-      size: "720 KB",
-      type: "PDF",
-      description: "Current organizational chart and reporting structure",
-      fileUrl: '/files/organizational-structure.pdf'
-    },
-    {
-      id: 6,
-      title: "Audit Report 2023",
-      category: "Financial Report",
-      uploadDate: "2023-12-28",
-      size: "3.1 MB",
-      type: "PDF",
-      description: "Annual audit findings and recommendations",
-      fileUrl: '/files/audit-report-2023.pdf'
-    }
-  ];
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [categories, setCategories] = useState<string[]>(["All"]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const categories = ["All", "Financial Report", "Turnover of Assets", "Expense Summary"];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem('token');
+        const [docsRes, catsRes] = await Promise.all([
+          axios.get('/api/v1/documents', { 
+            headers: { Authorization: `Bearer ${token}` },
+            params: { limit: 100 }
+          }),
+          axios.get('/api/v1/documents/categories', { 
+            headers: { Authorization: `Bearer ${token}` }
+          })
+        ]);
+
+        if (docsRes.data.success) {
+          setDocuments(docsRes.data.data);
+        }
+
+        if (catsRes.data.success) {
+          setCategories(['All', ...catsRes.data.data]);
+        }
+
+        setLoading(false);
+      } catch (err: any) {
+        console.error('Error fetching documents:', err);
+        setError(err.response?.data?.message || 'Failed to fetch documents');
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   // Filters / UI state (mirrors Officer MySubmissions behaviour)
   const [filterStatus, setFilterStatus] = useState('All'); // using category-like status for documents
@@ -308,6 +283,21 @@ const DocumentsViewer: React.FC = () => {
             </div>
           </div>
 
+          {loading && (
+            <div className="p-12 text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              <p className="mt-4 text-gray-600 dark:text-gray-400">Loading documents...</p>
+            </div>
+          )}
+
+          {error && (
+            <div className="p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <p className="text-red-600 dark:text-red-400">{error}</p>
+            </div>
+          )}
+
+          {!loading && !error && (
+
           <div className="p-6">
             {filteredDocuments.length === 0 ? (
               <div className="p-12 text-center">
@@ -420,33 +410,8 @@ const DocumentsViewer: React.FC = () => {
               )
             )}
           </div>
+          )}
         </div>
-
-        {filteredDocuments.length === 0 && (
-          <div className="text-center py-12">
-            <div className="w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg
-                className="w-12 h-12 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              No documents found
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400">
-              No documents match your current filter criteria.
-            </p>
-          </div>
-        )}
       </div>
     </>
   );

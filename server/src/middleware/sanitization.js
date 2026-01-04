@@ -6,6 +6,11 @@ const validator = require('../utils/validator');
  */
 const sanitizeInput = (req, res, next) => {
   try {
+    // Skip sanitization for multipart/form-data requests (handled by multer)
+    if (req.headers['content-type'] && req.headers['content-type'].includes('multipart/form-data')) {
+      return next();
+    }
+
     // Sanitize request body
     if (req.body && typeof req.body === 'object') {
       req.body = validator.sanitizeForDatabase(req.body);

@@ -1,3 +1,5 @@
+import { useState, useEffect } from "react";
+import axios from "axios";
 import Badge from "../../../../components/ui/badge/Badge";
 
 interface Announcement {
@@ -9,42 +11,34 @@ interface Announcement {
   category: string;
 }
 
-const announcements: Announcement[] = [
-  {
-    id: 1,
-    title: "New Transparency Initiative",
-    content: "Launching enhanced public data access portal with improved search capabilities",
-    date: "Nov 28, 2024",
-    priority: "High",
-    category: "Policy"
-  },
-  {
-    id: 2,
-    title: "Quarterly Report Available",
-    content: "Q4 2024 transparency and performance report is now available for download",
-    date: "Nov 25, 2024",
-    priority: "Medium",
-    category: "Reports"
-  },
-  {
-    id: 3,
-    title: "Public Consultation Open",
-    content: "Share your feedback on proposed policy changes affecting public data access",
-    date: "Nov 20, 2024",
-    priority: "Medium",
-    category: "Engagement"
-  },
-  {
-    id: 4,
-    title: "System Maintenance Notice",
-    content: "Scheduled maintenance on Dec 5th from 2 AM to 4 AM EST",
-    date: "Nov 18, 2024",
-    priority: "Low",
-    category: "Technical"
-  }
-];
-
 export default function PublicAnnouncements() {
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get('/api/v1/submissions/public', {
+           headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.data.success) {
+           const mappedData = response.data.data.map((item: any) => ({
+             id: item.id,
+             title: item.title,
+             content: item.description,
+             date: new Date(item.updated_at).toLocaleDateString(),
+             priority: (item.priority && ['High', 'Medium', 'Low'].includes(item.priority)) ? item.priority : 'Medium',
+             category: item.category || 'General'
+           }));
+           setAnnouncements(mappedData);
+        }
+      } catch (error) {
+        console.error("Failed to fetch announcements", error);
+      }
+    };
+    fetchData();
+  }, []);
+
   return (
     <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
       <div className="flex flex-col gap-2 mb-4 p-6 sm:flex-row sm:items-center sm:justify-between">
@@ -62,7 +56,10 @@ export default function PublicAnnouncements() {
 
       <div className="px-6 pb-6">
         <div className="space-y-4 max-h-96 overflow-y-auto custom-scrollbar">
-          {announcements.map((announcement) => (
+          {announcements.length === 0 ? (
+            <p className="text-gray-500 text-center py-4">No announcements available.</p>
+          ) : (
+            announcements.map((announcement) => (
             <div
               key={announcement.id}
               className="p-4 rounded-xl border border-gray-100 dark:border-gray-800"
@@ -126,7 +123,7 @@ export default function PublicAnnouncements() {
                 </div>
               </div>
             </div>
-          ))}
+          )))}
         </div>
       </div>
     </div>

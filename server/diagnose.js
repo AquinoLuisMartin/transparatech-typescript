@@ -1,11 +1,11 @@
 require('dotenv').config();
 const express = require('express');
 
-console.log('🔍 Server Diagnostics');
+console.log('Server Diagnostics');
 console.log('==========================================');
 
 // Check environment variables
-console.log('📋 Environment Variables:');
+console.log('Environment Variables:');
 console.log(`   NODE_ENV: ${process.env.NODE_ENV || 'undefined'}`);
 console.log(`   PORT: ${process.env.PORT || 'undefined'}`);
 console.log(`   DB_HOST: ${process.env.DB_HOST || 'undefined'}`);
@@ -19,15 +19,15 @@ console.log(`   CLIENT_URL: ${process.env.CLIENT_URL || 'undefined'}`);
 const PORT = process.env.PORT || 3000;
 const app = express();
 
-console.log('\n🔌 Testing Port Availability:');
+console.log('\nTesting Port Availability:');
 const server = app.listen(PORT, (error) => {
   if (error) {
-    console.log(`   ❌ Port ${PORT} is NOT available:`, error.message);
+    console.log(`   Port ${PORT} is NOT available:`, error.message);
     process.exit(1);
   } else {
-    console.log(`   ✅ Port ${PORT} is available`);
+    console.log(`   Port ${PORT} is available`);
     server.close(() => {
-      console.log(`   ✅ Port ${PORT} released successfully`);
+      console.log(`   Port ${PORT} released successfully`);
       testDatabase();
     });
   }
@@ -35,17 +35,17 @@ const server = app.listen(PORT, (error) => {
 
 server.on('error', (error) => {
   if (error.code === 'EADDRINUSE') {
-    console.log(`   ❌ Port ${PORT} is already in use`);
-    console.log('   💡 Try: netstat -ano | findstr :3000 to see what\'s using the port');
+    console.log(`   Port ${PORT} is already in use`);
+    console.log('   Try: netstat -ano | findstr :3000 to see what\'s using the port');
   } else {
-    console.log(`   ❌ Server error:`, error.message);
+    console.log(`   Server error:`, error.message);
   }
   process.exit(1);
 });
 
 // Test database connection
 async function testDatabase() {
-  console.log('\n🗄️  Testing Database Connection:');
+  console.log('\nTesting Database Connection:');
   
   try {
     const { Pool } = require('pg');
@@ -59,29 +59,29 @@ async function testDatabase() {
     });
 
     const client = await pool.connect();
-    console.log('   ✅ Database connection successful');
+    console.log('   Database connection successful');
     
     const result = await client.query('SELECT NOW() as current_time');
-    console.log(`   ✅ Database query successful: ${result.rows[0].current_time}`);
+    console.log(`   Database query successful: ${result.rows[0].current_time}`);
     
     client.release();
     await pool.end();
     
-    console.log('\n🎉 All diagnostics passed!');
+    console.log('\nAll diagnostics passed!');
     console.log('   The server should start successfully now.');
     
   } catch (error) {
-    console.log('   ❌ Database connection failed:', error.message);
+    console.log('   Database connection failed:', error.message);
     
     if (error.code === '28P01') {
-      console.log('   💡 This is a password authentication error');
-      console.log('   💡 Check your DB_PASSWORD in the .env file');
+      console.log('   This is a password authentication error');
+      console.log('   Check your DB_PASSWORD in the .env file');
     } else if (error.code === 'ENOTFOUND') {
-      console.log('   💡 Database host not found');
-      console.log('   💡 Make sure PostgreSQL is installed and running');
+      console.log('   Database host not found');
+      console.log('   Make sure PostgreSQL is installed and running');
     } else if (error.code === 'ECONNREFUSED') {
-      console.log('   💡 Connection refused');
-      console.log('   💡 Make sure PostgreSQL service is running');
+      console.log('   Connection refused');
+      console.log('   Make sure PostgreSQL service is running');
     }
   }
   

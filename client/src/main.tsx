@@ -7,6 +7,7 @@ import App from "./App.tsx";
 import { AppWrapper } from "./components/common/PageMeta.tsx";
 import { ThemeProvider } from "./context/ThemeContext.tsx";
 import { AuthProvider } from './context/AuthProvider';
+import { NotificationProvider } from './context/NotificationContext';
 import ErrorBoundary from './components/ErrorBoundary.tsx';
 
 const rootElement = document.getElementById("root");
@@ -19,9 +20,12 @@ if (!rootElement) {
       <ErrorBoundary>
         <ThemeProvider>
           <AuthProvider>
-            <AppWrapper>
-              <App />
-            </AppWrapper>
+            <NotificationProvider>
+              {/* Start global polling for notifications. */}
+              <AppWrapper>
+                <App />
+              </AppWrapper>
+            </NotificationProvider>
           </AuthProvider>
         </ThemeProvider>
       </ErrorBoundary>

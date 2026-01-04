@@ -1,3 +1,5 @@
+import { useState, useEffect } from "react";
+import axios from "axios";
 import Badge from "../../../../components/ui/badge/Badge";
 import {
   Table,
@@ -6,9 +8,41 @@ import {
   TableHeader,
   TableRow,
 } from "../../../../components/ui/table";
-import { reports as reportsData } from '../TransparencyReportViewer';
 
 export default function TransparencyReports() {
+  const [reports, setReports] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get('/api/v1/submissions/public', {
+           headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.data.success) {
+           const mappedReports = response.data.data
+             .filter((item: any) => item.type === 'report')
+             .map((item: any) => ({
+               id: item.id,
+               title: item.title,
+               category: item.category || 'General',
+               period: new Date(item.created_at).getFullYear().toString(),
+               publishDate: new Date(item.updated_at).toISOString().split('T')[0],
+               status: 'Published',
+               summary: item.description,
+               size: '2.5 MB',
+               downloadUrl: item.files && item.files.length > 0 ? item.files[0] : '#',
+               type: item.type
+             }));
+           setReports(mappedReports);
+        }
+      } catch (error) {
+        console.error("Failed to fetch reports", error);
+      }
+    };
+    fetchData();
+  }, []);
+
   const handleDownload = async (url: string, filename?: string) => {
     if (!url) return;
     // derive filename from url if not provided
@@ -120,9 +154,20 @@ export default function TransparencyReports() {
                 if (r.publishDate) return new Date(r.publishDate).getTime() || 0;
                 return 0;
               };
-              const sorted = [...reportsData].sort((a: any, b: any) => dateOf(b) - dateOf(a));
+              const sorted = [...reports].sort((a: any, b: any) => dateOf(b) - dateOf(a));
               // show up to 6 most recent reports from the shared reportsData source
               const recent = sorted.slice(0, 6);
+              
+              if (recent.length === 0) {
+                return (
+                  <TableRow>
+                    <TableCell className="py-3 text-center text-gray-500" colSpan={6}>
+                      No reports available.
+                    </TableCell>
+                  </TableRow>
+                );
+              }
+
               return recent.map((report: any) => (
               <TableRow key={report.id}>
                 <TableCell className="py-3">

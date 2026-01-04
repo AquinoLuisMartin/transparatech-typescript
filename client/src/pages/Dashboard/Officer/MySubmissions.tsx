@@ -1,111 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Calendar from '../../../components/ui/calendar';
 import PageMeta from '../../../components/common/PageMeta';
 import SubmissionCard from '../../../components/SubmissionCard';
 import SubmissionDetailsModal from '../../../components/SubmissionDetailsModal';
 import { Submission } from '../../../types/submission';
-
-// Export submissions at module top-level so other pages can import them as a source of truth.
-export const submissions: Submission[] = [
-  {
-    id: 1,
-    title: 'Monthly Budget Report - October 2024',
-    category: 'Financial Report',
-    submittedDate: '2024-10-31',
-    status: 'pending',
-    reviewer: 'Admin Department',
-    files: ['budget_report_oct.pdf', 'supporting_docs.xlsx'],
-    priority: 'high',
-    description: 'Comprehensive monthly budget analysis including variance reports and projections.'
-  },
-  {
-    id: 2,
-    title: 'Equipment Purchase Receipt - Laptops',
-    category: 'Receipt',
-    submittedDate: '2024-10-28',
-    status: 'approved',
-    reviewer: 'Finance Team',
-    approvedDate: '2024-10-30',
-    files: ['laptop_receipt.pdf', 'warranty_info.pdf'],
-    priority: 'medium',
-    description: 'Purchase receipt for 5 new laptops for the development team.'
-  },
-  {
-    id: 3,
-    title: 'Travel Expense Report - Conference',
-    category: 'Expense Report',
-    submittedDate: '2024-10-25',
-    status: 'rejected',
-    reviewer: 'Accounting',
-    rejectionReason: 'Missing required receipts for hotel accommodation',
-    rejectedDate: '2024-10-27',
-    files: ['travel_expenses.pdf'],
-    priority: 'medium',
-    description: 'Expense report for attending the annual transparency conference in Cebu.'
-  },
-  {
-    id: 4,
-    title: 'Quarterly Performance Report Q3',
-    category: 'Performance Report',
-    submittedDate: '2024-10-20',
-    status: 'approved',
-    reviewer: 'Management',
-    approvedDate: '2024-10-22',
-    files: ['q3_performance.docx', 'metrics_data.xlsx'],
-    priority: 'high',
-    description: 'Third quarter performance metrics and achievement analysis.'
-  },
-  {
-    id: 5,
-    title: 'Office Supplies Purchase Order',
-    category: 'Purchase Order',
-    submittedDate: '2024-10-18',
-    status: 'pending',
-    reviewer: 'Procurement',
-    files: ['purchase_order.pdf'],
-    priority: 'low',
-    description: 'Purchase order for office supplies including stationery and printer cartridges.'
-  },
-  {
-    id: 6,
-    title: 'Annual Audit Report 2024',
-    category: 'Audit Report',
-    submittedDate: '2024-10-15',
-    status: 'approved',
-    reviewer: 'Audit Committee',
-    approvedDate: '2024-10-17',
-    files: ['audit_report_2024.pdf', 'recommendations.docx'],
-    priority: 'urgent',
-    description: 'Comprehensive annual audit report with findings and recommendations.'
-  },
-  {
-    id: 7,
-    title: 'IT Equipment Maintenance Receipt',
-    category: 'Receipt',
-    submittedDate: '2024-10-12',
-    status: 'rejected',
-    reviewer: 'IT Department',
-    rejectionReason: 'Service provider not in approved vendor list',
-    rejectedDate: '2024-10-14',
-    files: ['maintenance_receipt.pdf'],
-    priority: 'medium',
-    description: 'Receipt for server maintenance and hardware upgrades.'
-  },
-  {
-    id: 8,
-    title: 'Training Workshop Expense Report',
-    category: 'Expense Report',
-    submittedDate: '2024-10-10',
-    status: 'approved',
-    reviewer: 'HR Department',
-    approvedDate: '2024-10-12',
-    files: ['training_expenses.pdf', 'certificates.pdf'],
-    priority: 'low',
-    description: 'Expenses for staff training workshop on data privacy and security.'
-  }
-];
+import axios from 'axios';
+import { useAuth } from '../../../hooks/useAuth';
 
 const MySubmissions: React.FC = () => {
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { token } = useAuth();
+
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [nameSort, setNameSort] = useState('default'); // 'default' | 'ascending' | 'descending'
@@ -116,6 +22,42 @@ const MySubmissions: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    const fetchSubmissions = async () => {
+      try {
+        const response = await axios.get('/api/v1/submissions', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (response.data.success) {
+          const mappedSubmissions = response.data.data.map((s: any) => ({
+            id: s.id,
+            title: s.title,
+            category: s.category || s.type,
+            submittedDate: s.created_at ? s.created_at.split('T')[0] : '',
+            status: s.status,
+            reviewer: s.reviewer_first_name ? `${s.reviewer_first_name} ${s.reviewer_last_name}` : 'Pending',
+            files: s.files || [],
+            priority: s.priority,
+            description: s.description,
+            approvedDate: s.approved_date ? s.approved_date.split('T')[0] : undefined,
+            rejectedDate: s.rejected_date ? s.rejected_date.split('T')[0] : undefined,
+            rejectionReason: s.rejection_reason
+          }));
+          setSubmissions(mappedSubmissions);
+        }
+      } catch (error) {
+        console.error('Failed to fetch submissions:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (token) {
+      fetchSubmissions();
+    }
+  }, [token]);
 
   const statusOptions = [
     { value: 'all', label: 'All Status' },
@@ -231,7 +173,7 @@ const MySubmissions: React.FC = () => {
       const lower = searchTerm.toLowerCase();
       const matchesSearch =
         submission.title.toLowerCase().includes(lower) ||
-        submission.category.toLowerCase().includes(lower) ||
+        (submission.category || '').toLowerCase().includes(lower) ||
         (submission.description || '').toLowerCase().includes(lower);
       const matchesDate = isWithinDateRange(submission.submittedDate);
       return matchesStatus && matchesSearch && matchesDate;
@@ -241,6 +183,10 @@ const MySubmissions: React.FC = () => {
       if (nameSort === 'descending') return b.title.localeCompare(a.title);
       return 0; // default preserves original order
     });
+
+  if (loading) {
+    return <div className="p-6 text-center">Loading submissions...</div>;
+  }
 
   return (
     <>

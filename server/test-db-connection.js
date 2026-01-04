@@ -20,7 +20,7 @@ async function testConnection() {
   try {
     console.log('Attempting to connect...');
     const client = await pool.connect();
-    console.log('✅ Connection successful!');
+    console.log('Connection successful!');
     
     const result = await client.query('SELECT version()');
     console.log('\nPostgreSQL Version:');

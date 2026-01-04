@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 import { 
   DocsIcon,
   UserIcon,
@@ -29,65 +30,64 @@ interface OrganizationStats {
 const AnalyticsReports = () => {
   const [showOrgModal, setShowOrgModal] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState<OrganizationStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock analytics data
-  const analyticsData: AnalyticsData = {
-    period: 'month',
-    totalSubmissions: 156,
-    approvedSubmissions: 134,
-    pendingSubmissions: 15,
-    rejectedSubmissions: 7,
-    totalUsers: 1247,
-    activeUsers: 892,
-    organizationActivity: 87
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData>({
+    period: 'all-time',
+    totalSubmissions: 0,
+    approvedSubmissions: 0,
+    pendingSubmissions: 0,
+    rejectedSubmissions: 0,
+    totalUsers: 0,
+    activeUsers: 0,
+    organizationActivity: 0
+  });
+
+  const [organizationStats, setOrganizationStats] = useState<OrganizationStats[]>([]);
+  const [submissionTrends, setSubmissionTrends] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, []);
+
+  const fetchAnalytics = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await axios.get('/api/v1/analytics', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        setAnalyticsData(response.data.data.analyticsData);
+        setOrganizationStats(response.data.data.organizationStats);
+        setSubmissionTrends(response.data.data.submissionTrends);
+      }
+    } catch (err) {
+      console.error('Failed to fetch analytics:', err);
+      setError('Failed to load analytics data');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const organizationStats: OrganizationStats[] = [
-    {
-      name: 'Alliance of Computer Engineering Students',
-      acronym: 'ACES',
-      submissions: 28,
-      approvalRate: 92.8,
-      avgProcessingTime: 2.3,
-      lastActivity: '2025-11-02'
-    },
-    {
-      name: 'Integrated Students in IT Education',
-      acronym: 'iSITE',
-      submissions: 35,
-      approvalRate: 88.6,
-      avgProcessingTime: 1.8,
-      lastActivity: '2025-11-01'
-    },
-    {
-      name: 'Association of Future Teachers',
-      acronym: 'AFT',
-      submissions: 22,
-      approvalRate: 95.5,
-      avgProcessingTime: 2.1,
-      lastActivity: '2025-10-30'
-    },
-    {
-      name: 'Chamber of Entrepreneurs and Managers',
-      acronym: 'CEM',
-      submissions: 31,
-      approvalRate: 87.1,
-      avgProcessingTime: 2.8,
-      lastActivity: '2025-11-02'
-    }
-  ];
+  const approvalRate = analyticsData.totalSubmissions > 0 
+    ? (analyticsData.approvedSubmissions / analyticsData.totalSubmissions * 100).toFixed(1)
+    : '0.0';
+  const rejectionRate = analyticsData.totalSubmissions > 0
+    ? (analyticsData.rejectedSubmissions / analyticsData.totalSubmissions * 100).toFixed(1)
+    : '0.0';
+  const pendingRate = analyticsData.totalSubmissions > 0
+    ? (analyticsData.pendingSubmissions / analyticsData.totalSubmissions * 100).toFixed(1)
+    : '0.0';
 
-  const submissionTrends = [
-    { month: 'Jul', submissions: 42, approved: 38, rejected: 4 },
-    { month: 'Aug', submissions: 56, approved: 48, rejected: 8 },
-    { month: 'Sep', submissions: 38, approved: 35, rejected: 3 },
-    { month: 'Oct', submissions: 67, approved: 58, rejected: 9 },
-    { month: 'Nov', submissions: 45, approved: 41, rejected: 4 }
-  ];
-
-  const approvalRate = (analyticsData.approvedSubmissions / analyticsData.totalSubmissions * 100).toFixed(1);
-  const rejectionRate = (analyticsData.rejectedSubmissions / analyticsData.totalSubmissions * 100).toFixed(1);
-  const pendingRate = (analyticsData.pendingSubmissions / analyticsData.totalSubmissions * 100).toFixed(1);
+  if (loading) {
+    return (
+      <div className="p-12 text-center">
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <p className="mt-4 text-gray-600 dark:text-gray-400">Loading analytics...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-white dark:bg-gray-900 min-h-screen">

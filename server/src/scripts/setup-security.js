@@ -9,7 +9,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-console.log('🔐 TransparaTech Security Setup Tool\n');
+console.log('TransparaTech Security Setup Tool\n');
 
 /**
  * Generate cryptographically secure secrets
@@ -32,7 +32,7 @@ const createSecureEnvFile = () => {
   
   // Check if .env already exists
   if (fs.existsSync(envPath)) {
-    console.log('⚠️  .env file already exists. Creating .env.secure with new secrets...\n');
+    console.log('.env file already exists. Creating .env.secure with new secrets...\n');
   }
 
   // Generate secure secrets
@@ -100,14 +100,14 @@ RATE_LIMIT_MAX_REQUESTS=100
   const outputPath = fs.existsSync(envPath) ? path.join(__dirname, '../../.env.secure') : envPath;
   fs.writeFileSync(outputPath, secureEnv);
 
-  console.log(`✅ Secure environment file created: ${path.basename(outputPath)}`);
-  console.log('\n📋 Generated Security Configuration:');
-  console.log(`   🔐 JWT Secret: ${secrets.jwtSecret.substring(0, 16)}... (128 characters)`);
-  console.log(`   🔐 Session Secret: ${secrets.sessionSecret.substring(0, 16)}... (64 characters)`);
-  console.log(`   🔐 Encryption Key: ${secrets.encryptionKey.substring(0, 16)}... (64 characters)`);
+  console.log(`Secure environment file created: ${path.basename(outputPath)}`);
+  console.log('\nGenerated Security Configuration:');
+  console.log(`   JWT Secret: ${secrets.jwtSecret.substring(0, 16)}... (128 characters)`);
+  console.log(`   Session Secret: ${secrets.sessionSecret.substring(0, 16)}... (64 characters)`);
+  console.log(`   Encryption Key: ${secrets.encryptionKey.substring(0, 16)}... (64 characters)`);
 
   if (outputPath.includes('.secure')) {
-    console.log('\n⚠️  Please review the generated .env.secure file and rename it to .env');
+    console.log('\nPlease review the generated .env.secure file and rename it to .env');
     console.log('   Make sure to update database credentials and other configuration values.');
   }
 
@@ -118,7 +118,7 @@ RATE_LIMIT_MAX_REQUESTS=100
  * Validate existing environment
  */
 const validateEnvironment = () => {
-  console.log('\n🔍 Validating Current Environment Configuration...\n');
+  console.log('\nValidating Current Environment Configuration...\n');
 
   const issues = [];
   const warnings = [];
@@ -126,19 +126,19 @@ const validateEnvironment = () => {
   // Check JWT_SECRET
   const jwtSecret = process.env.JWT_SECRET;
   if (!jwtSecret) {
-    issues.push('❌ JWT_SECRET is not set');
+    issues.push('JWT_SECRET is not set');
   } else if (jwtSecret.length < 32) {
-    issues.push(`❌ JWT_SECRET is too short (${jwtSecret.length} chars, minimum 32)`);
+    issues.push(`JWT_SECRET is too short (${jwtSecret.length} chars, minimum 32)`);
   } else if (['secret', 'test-secret', 'your_jwt_secret_key_here'].includes(jwtSecret.toLowerCase())) {
-    issues.push('❌ JWT_SECRET is using a default/weak value');
+    issues.push('JWT_SECRET is using a default/weak value');
   } else {
-    console.log('✅ JWT_SECRET is properly configured');
+    console.log('JWT_SECRET is properly configured');
   }
 
   // Check CORS configuration
   const clientUrl = process.env.CLIENT_URL;
   if (!clientUrl) {
-    warnings.push('⚠️  CLIENT_URL is not set (CORS origins)');
+    warnings.push('CLIENT_URL is not set (CORS origins)');
   } else {
     const origins = clientUrl.split(',').map(o => o.trim());
     const env = process.env.NODE_ENV || 'development';
@@ -149,16 +149,16 @@ const validateEnvironment = () => {
       );
       
       if (hasLocalhost) {
-        issues.push('❌ CLIENT_URL contains localhost origins in production');
+        issues.push('CLIENT_URL contains localhost origins in production');
       } else {
         const hasHttp = origins.some(origin => origin.startsWith('http://'));
         if (hasHttp) {
-          warnings.push('⚠️  CLIENT_URL contains HTTP origins (HTTPS recommended for production)');
+          warnings.push('CLIENT_URL contains HTTP origins (HTTPS recommended for production)');
         }
-        console.log('✅ CLIENT_URL is properly configured for production');
+        console.log('CLIENT_URL is properly configured for production');
       }
     } else {
-      console.log('✅ CLIENT_URL is configured');
+      console.log('CLIENT_URL is configured');
     }
   }
 
@@ -166,25 +166,25 @@ const validateEnvironment = () => {
   const requiredDbVars = ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD'];
   requiredDbVars.forEach(varName => {
     if (!process.env[varName]) {
-      warnings.push(`⚠️  ${varName} is not set`);
+      warnings.push(`${varName} is not set`);
     } else {
-      console.log(`✅ ${varName} is configured`);
+      console.log(`${varName} is configured`);
     }
   });
 
   // Print results
   if (issues.length > 0) {
-    console.log('\n🚨 Critical Security Issues:');
+    console.log('\nCritical Security Issues:');
     issues.forEach(issue => console.log(`   ${issue}`));
   }
 
   if (warnings.length > 0) {
-    console.log('\n⚠️  Configuration Warnings:');
+    console.log('\nConfiguration Warnings:');
     warnings.forEach(warning => console.log(`   ${warning}`));
   }
 
   if (issues.length === 0 && warnings.length === 0) {
-    console.log('\n🎉 Configuration looks good!');
+    console.log('\nConfiguration looks good!');
   }
 
   return { issues, warnings };
@@ -197,7 +197,7 @@ const main = () => {
   const args = process.argv.slice(2);
   
   if (args.includes('--generate') || args.includes('-g')) {
-    console.log('🔧 Generating secure environment configuration...\n');
+    console.log('Generating secure environment configuration...\n');
     createSecureEnvFile();
   } else if (args.includes('--validate') || args.includes('-v')) {
     // Load environment variables

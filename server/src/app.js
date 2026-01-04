@@ -6,7 +6,7 @@ require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
-// const aiRoutes = require('./routes/ai'); // Temporarily commented out
+const aiRoutes = require('./routes/ai');
 const { errorHandler } = require('./middleware/errorHandler');
 const { notFound } = require('./middleware/notFound');
 const { sanitizeInput, rateLimit, securityHeaders } = require('./middleware/sanitization');
@@ -24,19 +24,19 @@ app.use(rateLimit({
   maxRequests: 100 // limit each IP to 100 requests per windowMs
 }));
 
-// Stricter rate limiting for auth routes
-app.use('/api/v1/auth', rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 5, // limit each IP to 5 auth requests per windowMs
-  message: 'Too many authentication attempts, please try again later'
-}));
-
 // Secure CORS configuration
 const corsConfig = validateCorsConfig();
 app.use(cors(corsConfig));
 
 // Logging
 app.use(morgan('combined'));
+
+// Debug logging for all requests
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  console.log('Headers:', req.headers);
+  next();
+});
 
 // Body parsing with size limits
 app.use(express.json({ 
@@ -60,11 +60,33 @@ app.get('/health', (req, res) => {
   });
 });
 
+const path = require('path');
+
 // API Routes
+const recaptchaRoutes = require('./routes/recaptcha');
+const submissionRoutes = require('./routes/submissions');
+const announcementRoutes = require('./routes/announcements');
+const documentRoutes = require('./routes/documents');
+const feedbackRoutes = require('./routes/feedback');
+const organizationRoutes = require('./routes/organizations');
+const settingsRoutes = require('./routes/settings');
+const analyticsRoutes = require('./routes/analytics');
 const apiPrefix = process.env.API_PREFIX || '/api/v1';
+
+// Serve uploaded files statically
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 app.use(`${apiPrefix}/auth`, authRoutes);
 app.use(`${apiPrefix}/users`, userRoutes);
-// app.use(`${apiPrefix}/ai`, aiRoutes); // Temporarily commented out
+app.use(`${apiPrefix}/recaptcha`, recaptchaRoutes);
+app.use(`${apiPrefix}/submissions`, submissionRoutes);
+app.use(`${apiPrefix}/announcements`, announcementRoutes);
+app.use(`${apiPrefix}/documents`, documentRoutes);
+app.use(`${apiPrefix}/feedback`, feedbackRoutes);
+app.use(`${apiPrefix}/organizations`, organizationRoutes);
+app.use(`${apiPrefix}/settings`, settingsRoutes);
+app.use(`${apiPrefix}/analytics`, analyticsRoutes);
+app.use(`${apiPrefix}/ai`, aiRoutes);
 
 // Error handling middleware
 app.use(notFound);

@@ -11,13 +11,18 @@ const ViewerDashboard = () => {
       
       {/* Page Header */}
       <div className="mb-6">
-        <div className="mt-4">
-          <h1 className="text-title-md font-bold text-gray-800 dark:text-white/90">
-            Public Transparency Portal
-          </h1>
-          <p className="mt-2 text-gray-500 dark:text-gray-400">
-            Access public information, reports, and organizational transparency data
-          </p>
+        <div className="mt-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <h1 className="text-title-md font-bold text-gray-800 dark:text-white/90">
+              Public Transparency Portal
+            </h1>
+            <p className="mt-2 text-gray-500 dark:text-gray-400">
+              Access public information, reports, and organizational transparency data
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            
+          </div>
         </div>
       </div>
 
@@ -45,3 +50,4 @@ const ViewerDashboard = () => {
 };
 
 export default ViewerDashboard;
+

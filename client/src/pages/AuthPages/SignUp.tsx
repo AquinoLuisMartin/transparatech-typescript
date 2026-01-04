@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './Signup.css';
@@ -35,6 +35,8 @@ interface PasswordStrength {
   score: number;
 }
 
+// Global types removed - reCAPTCHA disabled for demo
+
 const SignUp: React.FC = () => {
   const navigate = useNavigate();
   
@@ -50,6 +52,8 @@ const SignUp: React.FC = () => {
     password: '',
     confirmPassword: ''
   });
+
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
@@ -321,6 +325,10 @@ const SignUp: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
+    
+    // Prevent multiple submissions
+    if (isSubmitting) return;
+    
     // Real-time validation before submit
     const ok = validateAll();
     if (!ok) {
@@ -334,18 +342,22 @@ const SignUp: React.FC = () => {
       return;
     }
 
-    // Map account type to database values
-    const accountTypeMap: { [key: string]: string } = {
-      'member': 'Organization Member (Viewer)',
-      'officer': 'Officer',
-      'administrator': 'Administrator'
-    };
+    setIsSubmitting(true);
 
     try {
-      const response = await axios.post('/api/v1/auth/register', {
+      // Map account type to database values
+      const accountTypeMap: { [key: string]: string } = {
+        'member': 'Organization Member (Viewer)',
+        'officer': 'Officer',
+        'administrator': 'Administrator'
+      };
+
+      const registrationData = {
         ...formData,
         accountType: accountTypeMap[formData.accountType]
-      });
+      };
+
+      const response = await axios.post('/api/v1/auth/register', registrationData);
 
       if (response.data.success) {
         // show toast notification
@@ -388,6 +400,8 @@ const SignUp: React.FC = () => {
         console.error('Unexpected error:', error);
         alert('An unexpected error occurred: ' + (error instanceof Error ? error.message : 'Unknown error'));
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -435,8 +449,8 @@ const SignUp: React.FC = () => {
   })();
 
   return (
-    <div className="signup">
-      <div className="signup__container">
+      <div className="signup">
+        <div className="signup__container">
         <form className="signup__form" onSubmit={handleSubmit} style={{ position: 'relative' }}>
           {/* Close (X) button - absolute positioned in the top-right of the signup card */}
           <button
@@ -477,9 +491,6 @@ const SignUp: React.FC = () => {
             </svg>
           </button>
           <header className="signup__header">
-            <div className="signup__logo">
-              <div className="logo-circle">PUP</div>
-            </div>
             <h2 className="signup__title" style={{ color: '#1565c0' }}>{getRoleTitle()}</h2>
             <p className="signup__subtitle">Fill in the details below to get started.</p>
           </header>
@@ -938,12 +949,25 @@ const SignUp: React.FC = () => {
             )}
           </div>
 
+          {/* reCAPTCHA disabled for demo */}
+
+
           <button
             type="submit"
             className="signup__submit-btn"
-            disabled={!isFormValid() || adminOrgNotSelected || !agreed}
+            disabled={!isFormValid() || adminOrgNotSelected || !agreed || isSubmitting}
           >
-            Create Account
+            {isSubmitting ? (
+              <div className="flex items-center justify-center gap-2">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Creating Account...
+              </div>
+            ) : (
+              'Create Account'
+            )}
           </button>
 
 
@@ -1245,8 +1269,8 @@ const SignUp: React.FC = () => {
             </button>
           </div>
         )}
+        </div>
       </div>
-    </div>
   );
 };
 

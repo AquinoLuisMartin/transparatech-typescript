@@ -85,6 +85,22 @@ const errorHandler = (err, req, res, next) => {
       statusCode: 400 
     };
   }
+
+  // Multer (File Upload) errors
+  else if (err.name === 'MulterError') {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      sanitizedError = { message: 'File is too large (Max 100MB)', statusCode: 400 };
+    } else if (err.code === 'LIMIT_FILE_COUNT') {
+      sanitizedError = { message: 'Too many files uploaded', statusCode: 400 };
+    } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      sanitizedError = { message: 'Unexpected file field', statusCode: 400 };
+    } else {
+      sanitizedError = { message: 'File upload error', statusCode: 400 };
+    }
+  }
+  else if (err.message === 'Error: Images and Documents Only!') {
+    sanitizedError = { message: 'Invalid file type. Only images and documents are allowed.', statusCode: 400 };
+  }
   
   // Rate limiting errors
   else if (err.statusCode === 429) {

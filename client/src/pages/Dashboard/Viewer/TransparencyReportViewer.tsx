@@ -1,48 +1,70 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import PageMeta from '../../../components/common/PageMeta';
 import Calendar from '../../../components/ui/calendar';
 
-export const reports = [
-    {
-      id: 1,
-      title: "Annual Transparency Report 2024",
-      category: "Financial Report",
-      period: "January - December 2024",
-      publishDate: "2024-01-30",
-      status: "Published",
-      summary: "Comprehensive annual report covering all transparency initiatives and accountability measures implemented throughout 2024.",
-      size: "4.2 MB",
-      downloadUrl: '/files/annual-transparency-report-2024.pdf'
-    },
-    {
-      id: 2,
-      title: "Q4 2023 Transparency Update",
-      category: "Expense Summary",
-      period: "October - December 2023",
-      publishDate: "2024-01-15",
-      status: "Published",
-      summary: "Quarterly transparency report highlighting key developments, policy changes, and public engagement activities.",
-      size: "2.8 MB",
-      downloadUrl: '/files/q4-2023-transparency-update.pdf'
-    },
-    {
-      id: 3,
-      title: "Q3 2023 Transparency Update",
-      category: "Turnover of Assets",
-      period: "July - September 2023",
-      publishDate: "2023-10-15",
-      status: "Published",
-      summary: "Third quarter report detailing transparency measures, public consultation outcomes, and operational improvements.",
-      size: "2.4 MB",
-      downloadUrl: '/files/q3-2023-transparency-update.pdf'
-    }
-];
+// Export empty array to avoid breaking imports, but components should fetch data
+export const reports = [];
+
+interface Report {
+  id: number;
+  title: string;
+  category: string;
+  period: string;
+  publishDate: string;
+  status: string;
+  summary: string;
+  size: string;
+  downloadUrl: string;
+  type?: string;
+}
 
 const TransparencyReportViewer: React.FC = () => {
+  const [reportsList, setReportsList] = useState<Report[]>([]);
+  const [metricsData, setMetricsData] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const [reportsRes, statsRes] = await Promise.all([
+          axios.get('/api/v1/submissions/public', { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get('/api/v1/submissions/stats', { headers: { Authorization: `Bearer ${token}` } })
+        ]);
+
+        if (reportsRes.data.success) {
+           const mappedReports = reportsRes.data.data
+             .filter((item: any) => item.type === 'report')
+             .map((item: any) => ({
+               id: item.id,
+               title: item.title,
+               category: item.category || 'General',
+               period: new Date(item.created_at).getFullYear().toString(),
+               publishDate: new Date(item.updated_at).toISOString().split('T')[0],
+               status: 'Published',
+               summary: item.description,
+               size: '2.5 MB', // Mock size as it's not in DB
+               downloadUrl: item.files && item.files.length > 0 ? item.files[0] : '#',
+               type: item.type
+             }));
+           setReportsList(mappedReports);
+        }
+
+        if (statsRes.data.success) {
+          setMetricsData(statsRes.data.data);
+        }
+
+      } catch (error) {
+        console.error("Failed to fetch data", error);
+      }
+    };
+    fetchData();
+  }, []);
+
   const metrics = [
     {
       title: "Total Reports Published",
-      value: "24",
+      value: metricsData ? metricsData.reports : "0",
       change: "+12%",
       changeType: "increase",
       icon: (
@@ -53,7 +75,7 @@ const TransparencyReportViewer: React.FC = () => {
     },
     {
       title: "Public Requests Processed",
-      value: "156",
+      value: metricsData ? metricsData.public_documents : "0", // Using public docs as proxy
       change: "+18%",
       changeType: "increase",
       icon: (
@@ -64,7 +86,7 @@ const TransparencyReportViewer: React.FC = () => {
     },
     {
       title: "Average Response Time",
-      value: "3.2 days",
+      value: "3.2 days", // Hardcoded for now
       change: "-24%",
       changeType: "decrease",
       icon: (
@@ -75,7 +97,7 @@ const TransparencyReportViewer: React.FC = () => {
     },
     {
       title: "Transparency Score",
-      value: "94%",
+      value: "94%", // Hardcoded for now
       change: "+6%",
       changeType: "increase",
       icon: (
@@ -137,7 +159,7 @@ const TransparencyReportViewer: React.FC = () => {
     return true;
   };
 
-  const filteredReports = reports
+  const filteredReports = reportsList
     .filter(report => {
       // Use the new `category` field on each report for filtering.
       const reportCategory = (report as any).category || '';

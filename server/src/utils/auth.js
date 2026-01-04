@@ -78,7 +78,7 @@ const validateEmail = (email) => {
   return emailRegex.test(email);
 };
 
-// Enhanced password validation
+// Simplified password validation (only minimum length required)
 const validatePassword = (password) => {
   if (!password || typeof password !== 'string') return false;
   
@@ -87,28 +87,6 @@ const validatePassword = (password) => {
   
   // Maximum length for security (prevent DoS)
   if (password.length > 128) return false;
-  
-  // At least 1 uppercase letter
-  if (!/[A-Z]/.test(password)) return false;
-  
-  // At least 1 lowercase letter
-  if (!/[a-z]/.test(password)) return false;
-  
-  // At least 1 digit
-  if (!/\d/.test(password)) return false;
-  
-  // At least 1 special character
-  if (!/[^A-Za-z0-9]/.test(password)) return false;
-  
-  // Check for common weak passwords
-  const commonPasswords = [
-    'password', '12345678', 'qwerty123', 'admin123', 
-    'Password1', 'password123', 'welcome123'
-  ];
-  
-  if (commonPasswords.some(weak => password.toLowerCase().includes(weak.toLowerCase()))) {
-    return false;
-  }
   
   return true;
 };

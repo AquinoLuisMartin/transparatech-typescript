@@ -1,3 +1,5 @@
+import { useState, useEffect } from "react";
+import axios from "axios";
 import Badge from "../../../../components/ui/badge/Badge";
 
 interface InfoItem {
@@ -8,38 +10,45 @@ interface InfoItem {
   status: "Available" | "Updated" | "New";
 }
 
-const publicInfoData: InfoItem[] = [
-  {
-    title: "Organizational Structure",
-    description: "Complete organizational chart and hierarchy information",
-    category: "Structure",
-    lastUpdated: "2 days ago",
-    status: "Updated"
-  },
-  {
-    title: "Budget Allocation",
-    description: "Public budget breakdown and resource allocation details",
-    category: "Finance",
-    lastUpdated: "1 week ago",
-    status: "Available"
-  },
-  {
-    title: "Policy Framework",
-    description: "Current policies, procedures, and governance framework",
-    category: "Governance",
-    lastUpdated: "3 days ago",
-    status: "New"
-  },
-  {
-    title: "Performance Metrics",
-    description: "Key performance indicators and organizational metrics",
-    category: "Performance",
-    lastUpdated: "5 days ago",
-    status: "Available"
-  }
-];
-
 export default function PublicInformation() {
+  const [publicInfoData, setPublicInfoData] = useState<InfoItem[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get('/api/v1/submissions/public', {
+           headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.data.success) {
+          const mappedData = response.data.data.map((item: any) => {
+            // Determine status based on date (e.g., if updated in last 3 days -> New/Updated)
+            const updatedDate = new Date(item.updated_at);
+            const now = new Date();
+            const diffTime = Math.abs(now.getTime() - updatedDate.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+            
+            let status: "Available" | "Updated" | "New" = "Available";
+            if (diffDays <= 3) status = "New";
+            else if (diffDays <= 7) status = "Updated";
+
+            return {
+              title: item.title,
+              description: item.description,
+              category: item.category || 'General',
+              lastUpdated: updatedDate.toLocaleDateString(),
+              status: status
+            };
+          });
+          setPublicInfoData(mappedData);
+        }
+      } catch (error) {
+        console.error("Failed to fetch public info", error);
+      }
+    };
+    fetchData();
+  }, []);
+
   return (
     <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
       <div className="flex flex-col gap-2 mb-4 p-6 sm:flex-row sm:items-center sm:justify-between">
@@ -57,7 +66,10 @@ export default function PublicInformation() {
 
       <div className="px-6 pb-6">
         <div className="space-y-4">
-          {publicInfoData.map((item, index) => (
+          {publicInfoData.length === 0 ? (
+            <p className="text-gray-500 text-center py-4">No public information available.</p>
+          ) : (
+            publicInfoData.map((item, index) => (
             <div
               key={index}
               className="flex items-start gap-4 p-4 rounded-xl border border-gray-100 dark:border-gray-800"
@@ -89,7 +101,7 @@ export default function PublicInformation() {
               </div>
               
               <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4">
                   <div className="flex-1">
                     <h4 className="font-medium text-gray-800 dark:text-white/90">
                       {item.title}
@@ -106,22 +118,24 @@ export default function PublicInformation() {
                       </span>
                     </div>
                   </div>
-                  <Badge
-                    size="sm"
-                    color={
-                      item.status === "Updated"
-                        ? "success"
-                        : item.status === "New"
-                        ? "primary"
-                        : "light"
-                    }
-                  >
-                    {item.status}
-                  </Badge>
+                  <div className="mt-2 sm:mt-0">
+                    <Badge
+                      size="sm"
+                      color={
+                        item.status === "Updated"
+                          ? "success"
+                          : item.status === "New"
+                          ? "primary"
+                          : "light"
+                      }
+                    >
+                      {item.status}
+                    </Badge>
+                  </div>
                 </div>
               </div>
             </div>
-          ))}
+          )))}
         </div>
       </div>
     </div>

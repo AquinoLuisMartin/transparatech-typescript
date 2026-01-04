@@ -2,7 +2,7 @@
 
 A comprehensive transparency portal and management system designed for the Polytechnic University of the Philippines Sta. Maria Branch (PUPSMB). This digital platform promotes openness, accountability, and responsible governance within the university community through modern web technologies.
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 This is a full-stack TypeScript application built with modern web technologies, featuring:
 - **Frontend**: React 19 + TypeScript + Vite + Tailwind CSS
@@ -11,26 +11,26 @@ This is a full-stack TypeScript application built with modern web technologies, 
 - **Database**: PostgreSQL with connection pooling and transaction support
 - **AI Integration**: Google Gemini AI for content generation and analysis
 
-## 📋 Project Description
+## Project Description
 
 The PUPSMB Transparency Portal is a digital platform dedicated to promoting openness, accountability, and responsible governance within the university community. It serves as a central hub for managing, submitting, and reviewing organizational and financial reports with clarity and integrity.
 
 ### Key Features
 
-- **🏛️ Role-based Dashboard System**: Three distinct user roles with specialized interfaces
+- **Role-based Dashboard System**: Three distinct user roles with specialized interfaces
   - **Admin Dashboard**: Complete system oversight, user management, document approvals, analytics, and system settings
   - **Officer Dashboard**: Document submission, activity tracking, and organizational announcements
   - **Viewer Dashboard**: Public access to transparency reports, documents, and feedback submission
 
-- **📊 Transparency Dashboard**: Real-time visibility and control with performance data and operational metrics
-- **🤖 Automation Solutions**: Intelligent automation tools that handle repetitive tasks and data entry
-- **📁 Data Management Services**: Comprehensive data handling with enhanced organization and accessibility
-- **📱 Responsive Design**: Fully responsive interface built with Tailwind CSS
-- **🔐 Authentication & Authorization**: Secure login system with role-based access control
-- **📈 Analytics & Reporting**: Built-in analytics with ApexCharts integration
-- **📅 Calendar Integration**: FullCalendar integration for scheduling and events
+- **Transparency Dashboard**: Real-time visibility and control with performance data and operational metrics
+- **Automation Solutions**: Intelligent automation tools that handle repetitive tasks and data entry
+- **Data Management Services**: Comprehensive data handling with enhanced organization and accessibility
+- **Responsive Design**: Fully responsive interface built with Tailwind CSS
+- **Authentication & Authorization**: Secure login system with role-based access control
+- **Analytics & Reporting**: Built-in analytics with ApexCharts integration
+- **Calendar Integration**: FullCalendar integration for scheduling and events
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 ### Frontend Technologies
 - **React 19.0.0** - Modern React with latest features and concurrent rendering
@@ -76,7 +76,7 @@ The PUPSMB Transparency Portal is a digital platform dedicated to promoting open
 - **Flatpickr** - Advanced date/time picker
 - **CLSX** - Conditional class names utility
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -168,7 +168,7 @@ Ensure you have the following installed on your system:
 - `npm run db:seed` - Seed database with initial data
 - `npm run db:reset` - Reset database to clean state
 
-## 📁 Project Structure
+## Project Structure
 
 The project is organized into two main parts: a `client` directory for the frontend application and a `server` directory for the backend services.
 
@@ -311,7 +311,7 @@ server/
 
 #### Key Server Features
 
-**🔒 Security Architecture**
+**Security Architecture**
 - **Parameterized Queries**: All SQL queries use parameter binding to prevent injection
 - **Query Externalization**: SQL queries stored in dedicated files for better maintenance
 - **JWT Security**: Secure token generation with configurable expiration and refresh tokens
@@ -321,26 +321,26 @@ server/
 - **CORS Protection**: Strict cross-origin resource sharing policies
 - **Security Headers**: Helmet.js for HTTP security headers
 
-**🗄️ Database Management**
+**Database Management**
 - **Connection Pooling**: PostgreSQL connection pool with configurable limits
 - **Health Monitoring**: Database health checks and connection validation
 - **Migration System**: Schema versioning and database setup automation
 - **Seed Data**: Initial data population for development and testing
 - **Query Optimization**: Indexed queries and performance monitoring
 
-**🤖 AI Integration**
+**AI Integration**
 - **Google Gemini AI**: Text generation and content analysis capabilities
 - **Configurable API**: Optional AI features with environment-based configuration
 - **Error Handling**: Graceful fallbacks when AI services are unavailable
 - **Usage Logging**: AI request tracking and monitoring
 
-**⚡ Performance Features**
+**Performance Features**
 - **Async/Await**: Modern asynchronous JavaScript patterns
 - **Error Boundaries**: Comprehensive error handling and recovery
 - **Logging System**: Structured logging with different levels (debug, info, warn, error)
 - **Environment Management**: Multi-environment configuration (dev, staging, production)
 
-## 🔐 User Roles & Permissions
+## User Roles & Permissions
 
 ### Admin Role
 - **System Management**: Complete oversight of the entire system
@@ -362,7 +362,7 @@ server/
 - **Public Announcements**: View public announcements
 - **Feedback Submission**: Submit feedback and suggestions
 
-## 🌍 Supported Organizations
+## Supported Organizations
 
 The system currently supports the following PUPSMB student organizations:
 
@@ -374,7 +374,7 @@ The system currently supports the following PUPSMB student organizations:
 - **HMSOC** - Hospitality Management Society
 - **JPIA** - Junior Philippine Institute of Accountancy - Sta Maria
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -463,7 +463,7 @@ pool: {
 - **Production**: 50 max connections, strict timeouts
 - **Testing**: 5 max connections, minimal timeouts
 
-## 🔒 Security Features
+## Security Features
 
 ### Authentication & Authorization
 - **JWT Tokens**: Secure token-based authentication with refresh token support
@@ -484,7 +484,7 @@ pool: {
 - **Input Validation**: Multi-layer validation and sanitization
 - **Error Handling**: Secure error messages without information disclosure
 
-## 🚀 API Documentation
+## API Documentation
 
 ### Authentication Endpoints
 ```
@@ -509,7 +509,7 @@ POST /api/v1/ai/generate      # Generate text content
 POST /api/v1/ai/analyze       # Analyze text content
 ```
 
-## 🧪 Testing & Debugging
+## Testing & Debugging
 
 ### Database Testing
 ```bash
@@ -541,7 +541,7 @@ npm run db:reset
 npm run db:seed
 ```
 
-## 🤝 Contributing
+## Contributing
 
 ### Development Workflow
 1. **Fork the repository** on GitHub
@@ -594,7 +594,7 @@ npm run db:seed
 - Keep dependencies updated for security patches
 - Never expose sensitive information in error messages
 
-## 📞 Support & Documentation
+## Support & Documentation
 
 ### Getting Help
 - **Issues**: Report bugs and request features on GitHub Issues

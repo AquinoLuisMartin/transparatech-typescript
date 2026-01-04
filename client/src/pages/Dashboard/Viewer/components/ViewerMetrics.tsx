@@ -1,3 +1,5 @@
+import { useState, useEffect } from "react";
+import axios from "axios";
 import {
   GroupIcon,
   BoxIconLine,
@@ -5,6 +7,42 @@ import {
 import Badge from "../../../../components/ui/badge/Badge";
 
 export default function ViewerMetrics() {
+  const [stats, setStats] = useState({
+    public_documents: 0,
+    reports: 0,
+    datasets: 0,
+    views: 0
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        // Use relative path if proxy is set up, or absolute if not. 
+        // Assuming localhost:5000 based on previous context or standard setup.
+        // Better to use a configured axios instance if available, but I'll use direct axios for now.
+        const response = await axios.get('/api/v1/submissions/stats', {
+           headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.data.success) {
+          setStats(response.data.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch stats", error);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  const formatNumber = (num: number | string) => {
+    const n = Number(num);
+    if (n >= 1000) {
+      return (n / 1000).toFixed(1) + 'K';
+    }
+    return n.toString();
+  };
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 md:gap-6">
       {/* Public Documents */}
@@ -55,7 +93,7 @@ export default function ViewerMetrics() {
               Public Documents
             </span>
             <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-              847
+              {stats.public_documents}
             </h4>
           </div>
           <Badge color="info" size="sm">
@@ -111,7 +149,7 @@ export default function ViewerMetrics() {
               Reports Published
             </span>
             <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-              156
+              {stats.reports}
             </h4>
           </div>
           <Badge color="success" size="sm">
@@ -131,7 +169,7 @@ export default function ViewerMetrics() {
               Data Sets
             </span>
             <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-              89
+              {stats.datasets}
             </h4>
           </div>
           <Badge color="warning" size="sm">
@@ -151,7 +189,7 @@ export default function ViewerMetrics() {
               Public Views
             </span>
             <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-              12.5K
+              {formatNumber(stats.views)}
             </h4>
           </div>
           <Badge color="primary" size="sm">

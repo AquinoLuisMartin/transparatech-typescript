@@ -1,6 +1,40 @@
+import { useState, useEffect } from "react";
+import axios from "axios";
 import BarChartOne from "../../../../components/charts/bar/BarChartOne";
 
 export default function DataVisualization() {
+  const [stats, setStats] = useState({
+    public_documents: 0,
+    reports: 0,
+    datasets: 0,
+    views: 0
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get('/api/v1/submissions/stats', {
+           headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.data.success) {
+          setStats(response.data.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch stats", error);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  const formatNumber = (num: number | string) => {
+    const n = Number(num);
+    if (n >= 1000) {
+      return (n / 1000).toFixed(1) + 'K';
+    }
+    return n.toString();
+  };
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       {/* Bar Chart */}
@@ -51,7 +85,7 @@ export default function DataVisualization() {
 
             <div className="text-center p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50">
               <div className="text-2xl font-bold text-gray-800 dark:text-white/90">
-                847
+                {stats.public_documents}
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 Total Documents
@@ -60,7 +94,7 @@ export default function DataVisualization() {
 
             <div className="text-center p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50">
               <div className="text-2xl font-bold text-gray-800 dark:text-white/90">
-                15.2K
+                {formatNumber(stats.views)}
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 Monthly Visitors

@@ -115,6 +115,7 @@ const chatResponse = asyncHandler(async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('Chat API Error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to generate response',
@@ -133,7 +134,7 @@ const getAIStatus = asyncHandler(async (req, res) => {
     success: true,
     data: {
       isConfigured,
-      model: 'gemini-1.5-flash',
+      model: 'gemini-3-flash-preview',
       status: isConfigured ? 'ready' : 'not_configured',
       timestamp: new Date().toISOString()
     }

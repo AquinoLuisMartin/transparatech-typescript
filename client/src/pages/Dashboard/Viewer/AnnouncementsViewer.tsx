@@ -1,84 +1,52 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import PageMeta from '../../../components/common/PageMeta';
 import Calendar from '../../../components/ui/calendar';
 
 const AnnouncementsViewer: React.FC = () => {
-  const announcements = [
-    {
-      id: 1,
-      title: "New Transparency Portal Launch",
-      category: "System Update",
-      priority: "high",
-      publishDate: "2024-02-01",
-      author: "System Administrator",
-      content: "We are excited to announce the launch of our new transparency portal. This enhanced platform provides better access to public information, improved search functionality, and a more user-friendly interface for all stakeholders.",
-      isSticky: true,
-      views: 2341,
-      tags: ["Portal", "Enhancement", "Public Access"]
-    },
-    {
-      id: 2,
-      title: "Q1 2024 Budget Review Session",
-      category: "Meeting",
-      priority: "medium",
-      publishDate: "2024-01-28",
-      author: "Finance Department",
-      content: "Join us for the quarterly budget review session scheduled for February 15, 2024. We will discuss budget allocations, performance metrics, and upcoming financial initiatives. Public participation is encouraged.",
-      isSticky: false,
-      views: 1876,
-      tags: ["Budget", "Review", "Public Meeting"]
-    },
-    {
-      id: 3,
-      title: "Updated Data Access Procedures",
-      category: "Policy",
-      priority: "medium",
-      publishDate: "2024-01-25",
-      author: "Policy Team",
-      content: "New procedures for accessing public data have been implemented to ensure faster response times and improved service quality. Please review the updated guidelines in the documents section.",
-      isSticky: false,
-      views: 1432,
-      tags: ["Policy", "Data Access", "Procedures"]
-    },
-    {
-      id: 4,
-      title: "Holiday Schedule - February 2024",
-      category: "Schedule",
-      priority: "low",
-      publishDate: "2024-01-22",
-      author: "Administration",
-      content: "Please note the upcoming holiday schedule for February 2024. Offices will be closed on February 14 (Valentine's Day observed) and February 26 (National Holiday). Emergency services remain available.",
-      isSticky: false,
-      views: 987,
-      tags: ["Holiday", "Schedule", "Office Hours"]
-    },
-    {
-      id: 5,
-      title: "Community Feedback Session Results",
-      category: "Community",
-      priority: "medium",
-      publishDate: "2024-01-20",
-      author: "Community Engagement",
-      content: "Thank you to all participants in our recent community feedback session. We received valuable insights that will help shape our future transparency initiatives. A detailed report is now available in the documents section.",
-      isSticky: false,
-      views: 1654,
-      tags: ["Community", "Feedback", "Engagement"]
-    },
-    {
-      id: 6,
-      title: "System Maintenance Notice",
-      category: "Technical",
-      priority: "high",
-      publishDate: "2024-01-18",
-      author: "IT Department",
-      content: "Scheduled maintenance will be performed on January 22, 2024, from 2:00 AM to 6:00 AM. During this time, the transparency portal may be temporarily unavailable. We apologize for any inconvenience.",
-      isSticky: false,
-      views: 2103,
-      tags: ["Maintenance", "System", "Downtime"]
-    }
-  ];
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [categories, setCategories] = useState<string[]>(["All"]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const categories = ["All", "System Update", "Meeting", "Policy", "Schedule", "Community", "Technical"];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem('token');
+        const [announcementsRes, catsRes] = await Promise.all([
+          axios.get('/api/v1/announcements', { 
+            headers: { Authorization: `Bearer ${token}` },
+            params: { limit: 100 }
+          }),
+          axios.get('/api/v1/announcements/categories', { 
+            headers: { Authorization: `Bearer ${token}` }
+          })
+        ]);
+
+        if (announcementsRes.data.success) {
+          setAnnouncements(announcementsRes.data.data.map((item: any) => ({
+            ...item,
+            publishDate: item.publish_date,
+            isSticky: item.is_sticky,
+            tags: typeof item.tags === 'string' ? JSON.parse(item.tags) : item.tags
+          })));
+        }
+
+        if (catsRes.data.success) {
+          setCategories(['All', ...catsRes.data.data]);
+        }
+
+        setLoading(false);
+      } catch (err: any) {
+        console.error('Error fetching announcements:', err);
+        setError(err.response?.data?.message || 'Failed to fetch announcements');
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   // Filters / UI state (mirrors Officer MySubmissions behaviour)
   const [filterStatus, setFilterStatus] = useState('All'); // using category-like status for announcements
@@ -301,6 +269,21 @@ const AnnouncementsViewer: React.FC = () => {
           )}
         </div>
 
+        {loading && (
+          <div className="p-12 text-center bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading announcements...</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p className="text-red-600 dark:text-red-400">{error}</p>
+          </div>
+        )}
+
+        {!loading && !error && (
+        <>
         {/* Sticky Announcements */}
         {stickyAnnouncements.length > 0 && (
           <div className="mb-8">
@@ -434,6 +417,8 @@ const AnnouncementsViewer: React.FC = () => {
               No announcements match your current search and filter criteria.
             </p>
           </div>
+        )}
+        </>
         )}
       </div>
     </>

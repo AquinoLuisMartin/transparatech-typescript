@@ -4,18 +4,18 @@ const { comparePassword } = require('./src/utils/auth');
 
 async function checkUserLogin() {
   try {
-    console.log('🔍 Checking user credentials...\n');
+    console.log('Checking user credentials...\n');
     
     const email = 'habee2004@gmail.com';
     const studentNumber = '2022-00076-SM-0';
     const password = 'Alpha@1000';
 
     // Check if user exists by email
-    console.log('📧 Checking by email:', email);
+    console.log('Checking by email:', email);
     const userByEmail = await User.findByEmail(email);
     
     if (userByEmail) {
-      console.log('✅ User found by email:');
+      console.log('User found by email:');
       console.log(`   ID: ${userByEmail.id}`);
       console.log(`   Name: ${userByEmail.first_name} ${userByEmail.last_name}`);
       console.log(`   Email: ${userByEmail.email}`);
@@ -25,16 +25,16 @@ async function checkUserLogin() {
       
       // Test password
       const isPasswordValid = await comparePassword(password, userByEmail.password);
-      console.log(`   Password Valid: ${isPasswordValid ? '✅ YES' : '❌ NO'}`);
+      console.log(`   Password Valid: ${isPasswordValid ? 'YES' : 'NO'}`);
     } else {
-      console.log('❌ No user found with email:', email);
+      console.log('No user found with email:', email);
     }
 
-    console.log('\n🎓 Checking by student number:', studentNumber);
+    console.log('\nChecking by student number:', studentNumber);
     const userByStudentNumber = await User.findByStudentNumber(studentNumber);
     
     if (userByStudentNumber) {
-      console.log('✅ User found by student number:');
+      console.log('User found by student number:');
       console.log(`   ID: ${userByStudentNumber.id}`);
       console.log(`   Name: ${userByStudentNumber.first_name} ${userByStudentNumber.last_name}`);
       console.log(`   Email: ${userByStudentNumber.email}`);
@@ -43,9 +43,9 @@ async function checkUserLogin() {
       
       // Test password
       const isPasswordValid = await comparePassword(password, userByStudentNumber.password);
-      console.log(`   Password Valid: ${isPasswordValid ? '✅ YES' : '❌ NO'}`);
+      console.log(`   Password Valid: ${isPasswordValid ? 'YES' : 'NO'}`);
     } else {
-      console.log('❌ No user found with student number:', studentNumber);
+      console.log('No user found with student number:', studentNumber);
     }
 
     // List all users in database

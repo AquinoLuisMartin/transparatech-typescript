@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 import { 
   PencilIcon, 
   TrashBinIcon,
@@ -12,119 +13,105 @@ interface Announcement {
   title: string;
   content: string;
   priority: 'low' | 'medium' | 'high' | 'urgent';
-  status: 'draft' | 'published' | 'archived';
-  targetAudience: 'all' | 'students' | 'officers' | 'organizations';
-  createdBy: string;
-  createdAt: string;
-  publishedAt?: string;
-  expiresAt?: string;
+  category: string;
+  author: string;
+  publishDate: string;
+  isSticky: boolean;
   views: number;
+  tags: string[];
 }
 
 const AnnouncementsManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'published' | 'archived'>('all');
+  const [categoryFilter, setCategoryFilter] = useState('All');
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'low' | 'medium' | 'high' | 'urgent'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   const [announcementToDelete, setAnnouncementToDelete] = useState<Announcement | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data
-  const [announcements, setAnnouncements] = useState<Announcement[]>([
-    {
-      id: '1',
-      title: 'Student Organization Registration Open',
-      content: 'Registration for new student organizations is now open. Please submit your applications by December 15, 2025.',
-      priority: 'high',
-      status: 'published',
-      targetAudience: 'students',
-      createdBy: 'System Administrator',
-      createdAt: '2025-10-15',
-      publishedAt: '2025-10-15',
-      expiresAt: '2025-12-15',
-      views: 245
-    },
-    {
-      id: '2',
-      title: 'System Maintenance Scheduled',
-      content: 'The TransparaTech system will undergo maintenance on November 10, 2025, from 2:00 AM to 6:00 AM. The system will be temporarily unavailable.',
-      priority: 'urgent',
-      status: 'published',
-      targetAudience: 'all',
-      createdBy: 'System Administrator',
-      createdAt: '2025-11-01',
-      publishedAt: '2025-11-01',
-      expiresAt: '2025-11-11',
-      views: 567
-    },
-    {
-      id: '3',
-      title: 'New Document Submission Guidelines',
-      content: 'Updated guidelines for document submission are now available. Please review the new requirements before submitting documents.',
-      priority: 'medium',
-      status: 'published',
-      targetAudience: 'officers',
-      createdBy: 'System Administrator',
-      createdAt: '2025-10-28',
-      publishedAt: '2025-10-30',
-      views: 123
-    },
-    {
-      id: '4',
-      title: 'Holiday Schedule Notice',
-      content: 'Please note the holiday schedule for December 2025. Offices will be closed on specific dates.',
-      priority: 'low',
-      status: 'draft',
-      targetAudience: 'all',
-      createdBy: 'System Administrator',
-      createdAt: '2025-11-02',
-      views: 0
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, []);
+
+  const fetchAnnouncements = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await axios.get('/api/v1/announcements', {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { limit: 100 }
+      });
+      if (response.data.success) {
+        setAnnouncements(response.data.data.map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          content: item.content,
+          priority: item.priority || 'medium',
+          category: item.category,
+          author: item.author,
+          publishDate: item.publish_date,
+          isSticky: item.is_sticky,
+          views: item.views,
+          tags: typeof item.tags === 'string' ? JSON.parse(item.tags) : (item.tags || [])
+        })));
+      }
+    } catch (err) {
+      console.error('Failed to fetch announcements:', err);
+      setError('Failed to load announcements');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
   const [newAnnouncement, setNewAnnouncement] = useState({
     title: '',
     content: '',
     priority: 'medium' as const,
-    targetAudience: 'all' as const,
-    expiresAt: ''
+    category: 'General',
+    isSticky: false
   });
 
   const filteredAnnouncements = announcements.filter(announcement => {
     const matchesSearch = announcement.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          announcement.content.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || announcement.status === statusFilter;
+    const matchesCategory = categoryFilter === 'All' || announcement.category === categoryFilter;
     const matchesPriority = priorityFilter === 'all' || announcement.priority === priorityFilter;
-    return matchesSearch && matchesStatus && matchesPriority;
+    return matchesSearch && matchesCategory && matchesPriority;
   });
 
-  const handleAddAnnouncement = (status: 'draft' | 'published' = 'published') => {
-    const announcement: Announcement = {
-      id: Date.now().toString(),
-      title: newAnnouncement.title,
-      content: newAnnouncement.content,
-      priority: newAnnouncement.priority,
-      status: status,
-      targetAudience: newAnnouncement.targetAudience,
-      createdBy: 'System Administrator',
-      createdAt: new Date().toISOString().split('T')[0],
-      publishedAt: status === 'published' ? new Date().toISOString().split('T')[0] : undefined,
-      expiresAt: newAnnouncement.expiresAt || undefined,
-      views: 0
-    };
+  const handleAddAnnouncement = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await axios.post('/api/v1/announcements', {
+        title: newAnnouncement.title,
+        content: newAnnouncement.content,
+        priority: newAnnouncement.priority,
+        category: newAnnouncement.category,
+        is_sticky: newAnnouncement.isSticky,
+        author: 'System Administrator',
+        tags: []
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
-    setAnnouncements([announcement, ...announcements]);
-    setNewAnnouncement({ title: '', content: '', priority: 'medium', targetAudience: 'all', expiresAt: '' });
-    setShowAddModal(false);
+      if (response.data.success) {
+        fetchAnnouncements();
+        setNewAnnouncement({ title: '', content: '', priority: 'medium', category: 'General', isSticky: false });
+        setShowAddModal(false);
+      }
+    } catch (err) {
+      console.error('Failed to create announcement:', err);
+    }
   };
 
   const handleEditAnnouncement = () => {
+    // TODO: Implement edit API call
     if (selectedAnnouncement) {
-      setAnnouncements(announcements.map(announcement => 
-        announcement.id === selectedAnnouncement.id ? selectedAnnouncement : announcement
-      ));
       setShowEditModal(false);
       setSelectedAnnouncement(null);
     }
@@ -135,36 +122,20 @@ const AnnouncementsManagement = () => {
     setShowDeleteModal(true);
   };
 
-  const confirmDeleteAnnouncement = () => {
+  const confirmDeleteAnnouncement = async () => {
     if (announcementToDelete) {
-      setAnnouncements(announcements.filter(announcement => announcement.id !== announcementToDelete.id));
-      setShowDeleteModal(false);
-      setAnnouncementToDelete(null);
+      try {
+        const token = localStorage.getItem('accessToken');
+        await axios.delete(`/api/v1/announcements/${announcementToDelete.id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        fetchAnnouncements();
+        setShowDeleteModal(false);
+        setAnnouncementToDelete(null);
+      } catch (err) {
+        console.error('Failed to delete announcement:', err);
+      }
     }
-  };
-
-  const handlePublishAnnouncement = (id: string) => {
-    setAnnouncements(announcements.map(announcement => 
-      announcement.id === id 
-        ? { ...announcement, status: 'published', publishedAt: new Date().toISOString().split('T')[0] }
-        : announcement
-    ));
-  };
-
-  const handleArchiveAnnouncement = (id: string) => {
-    setAnnouncements(announcements.map(announcement => 
-      announcement.id === id 
-        ? { ...announcement, status: 'archived' }
-        : announcement
-    ));
-  };
-
-  const handleUnarchiveAnnouncement = (id: string) => {
-    setAnnouncements(announcements.map(announcement => 
-      announcement.id === id 
-        ? { ...announcement, status: 'published', publishedAt: new Date().toISOString().split('T')[0] }
-        : announcement
-    ));
   };
 
   const getPriorityColor = (priority: string) => {
@@ -177,18 +148,8 @@ const AnnouncementsManagement = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'published': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'draft': return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-      case 'archived': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-    }
-  };
-
   const totalAnnouncements = announcements.length;
-  const publishedAnnouncements = announcements.filter(a => a.status === 'published').length;
-  const draftAnnouncements = announcements.filter(a => a.status === 'draft').length;
+  const stickyAnnouncements = announcements.filter(a => a.isSticky).length;
   const totalViews = announcements.reduce((sum, a) => sum + a.views, 0);
 
   return (
@@ -204,7 +165,7 @@ const AnnouncementsManagement = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-lg border border-blue-200 dark:border-blue-800">
           <div className="flex items-center">
             <DocsIcon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
@@ -219,18 +180,8 @@ const AnnouncementsManagement = () => {
           <div className="flex items-center">
             <CalenderIcon className="h-8 w-8 text-green-600 dark:text-green-400" />
             <div className="ml-4">
-              <p className="text-sm font-medium text-green-600 dark:text-green-400">Published</p>
-              <p className="text-2xl font-bold text-green-700 dark:text-green-300">{publishedAnnouncements}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-orange-50 dark:bg-orange-900/20 p-6 rounded-lg border border-orange-200 dark:border-orange-800">
-          <div className="flex items-center">
-            <PencilIcon className="h-8 w-8 text-orange-600 dark:text-orange-400" />
-            <div className="ml-4">
-              <p className="text-sm font-medium text-orange-600 dark:text-orange-400">Drafts</p>
-              <p className="text-2xl font-bold text-orange-700 dark:text-orange-300">{draftAnnouncements}</p>
+              <p className="text-sm font-medium text-green-600 dark:text-green-400">Sticky Announcements</p>
+              <p className="text-2xl font-bold text-green-700 dark:text-green-300">{stickyAnnouncements}</p>
             </div>
           </div>
         </div>
@@ -264,14 +215,15 @@ const AnnouncementsManagement = () => {
             </div>
 
             <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as 'all' | 'draft' | 'published' | 'archived')}
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
               className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
-              <option value="all">All Status</option>
-              <option value="published">Published</option>
-              <option value="draft">Draft</option>
-              <option value="archived">Archived</option>
+              <option value="All">All Categories</option>
+              <option value="General">General</option>
+              <option value="System Update">System Update</option>
+              <option value="Meeting">Meeting</option>
+              <option value="Event">Event</option>
             </select>
 
             <select
@@ -312,13 +264,10 @@ const AnnouncementsManagement = () => {
                   Priority
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Status
+                  Category
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Audience
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Created
+                  Date
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Actions
@@ -326,88 +275,67 @@ const AnnouncementsManagement = () => {
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredAnnouncements.map((announcement) => (
-                <tr key={announcement.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="px-6 py-4">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">
-                        {announcement.title}
-                      </div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">
-                        {announcement.content}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(announcement.priority)}`}>
-                      {announcement.priority}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(announcement.status)}`}>
-                      {announcement.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {announcement.targetAudience}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {new Date(announcement.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => {
-                          setSelectedAnnouncement(announcement);
-                          setShowEditModal(true);
-                        }}
-                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                      >
-                        <PencilIcon className="h-4 w-4" />
-                      </button>
-                      {announcement.status === 'draft' && (
-                        <button
-                          onClick={() => handlePublishAnnouncement(announcement.id)}
-                          className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
-                          title="Publish"
-                        >
-                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-                          </svg>
-                        </button>
-                      )}
-                      {announcement.status === 'published' && (
-                        <button
-                          onClick={() => handleArchiveAnnouncement(announcement.id)}
-                          className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300"
-                          title="Archive"
-                        >
-                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8l4 4 4-4m6-2v10a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2z" />
-                          </svg>
-                        </button>
-                      )}
-                      {announcement.status === 'archived' && (
-                        <button
-                          onClick={() => handleUnarchiveAnnouncement(announcement.id)}
-                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                          title="Unarchive"
-                        >
-                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l3-3m0 0l3 3m-3-3v12m8-16V6a2 2 0 00-2-2H7a2 2 0 00-2 2v2m14 0v8a2 2 0 01-2 2H7a2 2 0 01-2-2V8a2 2 0 012-2h10a2 2 0 012 2z" />
-                          </svg>
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDeleteAnnouncement(announcement)}
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                      >
-                        <TrashBinIcon className="h-4 w-4" />
-                      </button>
-                    </div>
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                    Loading announcements...
                   </td>
                 </tr>
-              ))}
+              ) : filteredAnnouncements.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                    No announcements found
+                  </td>
+                </tr>
+              ) : (
+                filteredAnnouncements.map((announcement) => (
+                  <tr key={announcement.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                          {announcement.isSticky && (
+                            <span title="Sticky" className="text-yellow-500">📌</span>
+                          )}
+                          {announcement.title}
+                        </div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">
+                          {announcement.content}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(announcement.priority)}`}>
+                        {announcement.priority}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                      {announcement.category}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {new Date(announcement.publishDate).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => {
+                            setSelectedAnnouncement(announcement);
+                            setShowEditModal(true);
+                          }}
+                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteAnnouncement(announcement)}
+                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                        >
+                          <TrashBinIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -485,30 +413,31 @@ const AnnouncementsManagement = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Target Audience
+                      Category
                     </label>
                     <select
-                      value={newAnnouncement.targetAudience}
-                      onChange={(e) => setNewAnnouncement({ ...newAnnouncement, targetAudience: e.target.value as typeof newAnnouncement.targetAudience })}
+                      value={newAnnouncement.category}
+                      onChange={(e) => setNewAnnouncement({ ...newAnnouncement, category: e.target.value })}
                       className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     >
-                      <option value="all">All Users</option>
-                      <option value="students">Students</option>
-                      <option value="officers">Officers</option>
-                      <option value="organizations">Organizations</option>
+                      <option value="General">General</option>
+                      <option value="System Update">System Update</option>
+                      <option value="Meeting">Meeting</option>
+                      <option value="Event">Event</option>
                     </select>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Expires On (Optional)
-                    </label>
+                  <div className="flex items-center mt-8">
                     <input
-                      type="date"
-                      value={newAnnouncement.expiresAt}
-                      onChange={(e) => setNewAnnouncement({ ...newAnnouncement, expiresAt: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      type="checkbox"
+                      id="isSticky"
+                      checked={newAnnouncement.isSticky}
+                      onChange={(e) => setNewAnnouncement({ ...newAnnouncement, isSticky: e.target.checked })}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                     />
+                    <label htmlFor="isSticky" className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                      Pin to top (Sticky)
+                    </label>
                   </div>
                 </div>
               </div>
@@ -522,18 +451,11 @@ const AnnouncementsManagement = () => {
                 Cancel
               </button>
               <button
-                onClick={() => handleAddAnnouncement('draft')}
-                disabled={!newAnnouncement.title || !newAnnouncement.content}
-                className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium shadow-sm"
-              >
-                Save as Draft
-              </button>
-              <button
-                onClick={() => handleAddAnnouncement('published')}
+                onClick={handleAddAnnouncement}
                 disabled={!newAnnouncement.title || !newAnnouncement.content}
                 className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium shadow-sm"
               >
-                Publish Announcement
+                Create Announcement
               </button>
             </div>
           </div>

@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import useNotificationsPoll from '../../../hooks/useNotificationsPoll';
 import PageMeta from '../../../components/common/PageMeta';
 import { useAuth } from '../../../hooks/useAuth';
 import { ROLES } from '../../../permissions';
+import axios from 'axios';
 
 interface Submission {
   id: number;
@@ -13,10 +15,36 @@ interface Submission {
   status: string;
 }
 
+interface Approval {
+  id: number;
+  title: string;
+  officer: string;
+  approvedDate: string;
+  approvedBy: string;
+}
+
 const AdminDashboard: React.FC = () => {
   const { userRole } = useAuth();
-
   const isFullAdmin = userRole === ROLES.ADMIN_FULL;
+  
+  // start polling for notifications
+  useNotificationsPoll({ endpoint: '/api/v1/submissions/notifications', intervalMs: 15000, enabled: true });
+
+  // State for data
+  const [stats, setStats] = useState({
+    pendingSubmissions: 0,
+    totalDocuments: 0,
+    recentApprovals: 0,
+    activeUsers: 45, // Mock
+    totalOrganizations: 12, // Mock
+    systemAlerts: 3, // Mock
+    monthlySubmissions: 0,
+    approvalRate: 0
+  });
+  
+  const [recentSubmissions, setRecentSubmissions] = useState<Submission[]>([]);
+  const [recentApprovals, setRecentApprovals] = useState<Approval[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Modal state management
   const [showModal, setShowModal] = useState(false);
@@ -28,6 +56,87 @@ const AdminDashboard: React.FC = () => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [showAlertsModal, setShowAlertsModal] = useState(false);
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const headers = { Authorization: `Bearer ${token}` };
+
+        // Fetch Stats
+        const statsRes = await axios.get('/api/v1/submissions/stats', { headers });
+        const statsData = statsRes.data.data;
+
+        // Fetch Analytics for more detailed stats
+        const analyticsRes = await axios.get('/api/v1/analytics', { headers });
+        const analytics = analyticsRes.data.data.analyticsData;
+        const orgStats = analyticsRes.data.data.organizationStats;
+        const trends = analyticsRes.data.data.submissionTrends;
+        
+        const currentMonth = new Date().toLocaleString('default', { month: 'short' });
+        const currentMonthTrend = trends.find((t: any) => t.month === currentMonth);
+        const monthlyCount = currentMonthTrend ? currentMonthTrend.submissions : 0;
+
+        setStats({
+          pendingSubmissions: analytics.pendingSubmissions,
+          totalDocuments: analytics.totalSubmissions,
+          recentApprovals: analytics.approvedSubmissions,
+          activeUsers: analytics.activeUsers,
+          totalOrganizations: orgStats.length,
+          systemAlerts: 0,
+          monthlySubmissions: monthlyCount,
+          approvalRate: analytics.totalSubmissions > 0 
+            ? parseFloat((analytics.approvedSubmissions / analytics.totalSubmissions * 100).toFixed(1)) 
+            : 0
+        });
+
+        // Fetch Pending Submissions (from all submissions)
+        const submissionsRes = await axios.get('/api/v1/submissions?limit=20', { headers });
+        const allSubmissions = submissionsRes.data.data;
+        const pending = allSubmissions
+          .filter((s: any) => s.status === 'pending')
+          .slice(0, 5)
+          .map((s: any) => ({
+            id: s.id,
+            title: s.title,
+            officer: `${s.user_first_name} ${s.user_last_name}`,
+            organization: s.user_organization || 'N/A',
+            submittedDate: s.created_at ? s.created_at.split('T')[0] : '',
+            priority: s.priority || 'medium',
+            status: s.status
+          }));
+        
+        setRecentSubmissions(pending);
+
+        // Fetch Recent Approvals (from public/approved submissions)
+        const approvalsRes = await axios.get('/api/v1/submissions/public?limit=5', { headers });
+        const approvals = approvalsRes.data.data.map((s: any) => ({
+          id: s.id,
+          title: s.title,
+          officer: `${s.user_first_name} ${s.user_last_name}`,
+          approvedDate: s.updated_at ? s.updated_at.split('T')[0] : '',
+          approvedBy: 'Admin' // The public endpoint might not return reviewer name, need to check query
+        }));
+        
+        setRecentApprovals(approvals);
+
+        // Update stats state
+        setStats(prev => ({
+          ...prev,
+          pendingSubmissions: statsData.pending_submissions || 0,
+          totalDocuments: (parseInt(statsData.public_documents) || 0) + (parseInt(statsData.pending_submissions) || 0),
+          recentApprovals: approvals.length
+        }));
+
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   // Handle approval/rejection clicks
   const handleActionClick = (submission: Submission, action: 'approve' | 'reject') => {
     setSelectedSubmission(submission);
@@ -36,26 +145,48 @@ const AdminDashboard: React.FC = () => {
   };
 
   // Handle confirmation
-  const handleConfirm = () => {
-    if (modalType === 'approve') {
-      setToastMessage('Submission approved successfully!');
-      setToastType('success');
-    } else {
-      // Check if rejection reason is provided
-      if (rejectionReason.trim() === '') {
-        return; // Don't proceed if no reason provided
+  const handleConfirm = async () => {
+    if (!selectedSubmission) return;
+
+    try {
+      const token = localStorage.getItem('accessToken');
+      const status = modalType === 'approve' ? 'approved' : 'rejected';
+      
+      await axios.put(`/api/v1/submissions/${selectedSubmission.id}/status`, {
+        status,
+        rejectionReason: modalType === 'reject' ? rejectionReason : undefined
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      // Update local state
+      setRecentSubmissions(prev => prev.filter(s => s.id !== selectedSubmission.id));
+      setStats(prev => ({
+        ...prev,
+        pendingSubmissions: Math.max(0, prev.pendingSubmissions - 1),
+        recentApprovals: modalType === 'approve' ? prev.recentApprovals + 1 : prev.recentApprovals
+      }));
+
+      if (modalType === 'approve') {
+        setToastMessage('Submission approved successfully!');
+        setToastType('success');
+      } else {
+        setToastMessage('Submission rejected. The officer will be notified.');
+        setToastType('info');
       }
-      setToastMessage('Submission rejected. The officer will be notified.');
+      setShowModal(false);
+      setShowToast(true);
+      setRejectionReason('');
+      
+      setTimeout(() => {
+        setShowToast(false);
+      }, 3000);
+    } catch (err) {
+      console.error('Error updating submission:', err);
+      setToastMessage('Failed to update submission status');
       setToastType('info');
+      setShowToast(true);
     }
-    setShowModal(false);
-    setShowToast(true);
-    setRejectionReason('');
-    
-    // Auto-hide toast after 3 seconds
-    setTimeout(() => {
-      setShowToast(false);
-    }, 3000);
   };
 
   // Close modal
@@ -74,19 +205,7 @@ const AdminDashboard: React.FC = () => {
     setShowAlertsModal(false);
   };
 
-  // Mock data for dashboard metrics
-  const dashboardData = {
-    pendingSubmissions: 15,
-    totalDocuments: 1247,
-    recentApprovals: 8,
-    activeUsers: 45,
-    totalOrganizations: 12,
-    systemAlerts: 3,
-    monthlySubmissions: 342,
-    approvalRate: 89
-  };
-
-  // System alerts data
+  // System alerts data (Mock)
   const systemAlerts = [
     {
       id: 1,
@@ -117,74 +236,6 @@ const AdminDashboard: React.FC = () => {
     }
   ];
 
-  const recentSubmissions = [
-    {
-      id: 1,
-      title: "Monthly Budget Report - October 2024",
-      officer: "John Doe",
-      organization: "Student Council",
-      submittedDate: "2024-11-01",
-      priority: "high",
-      status: "pending"
-    },
-    {
-      id: 2,
-      title: "Equipment Purchase Receipt",
-      officer: "Jane Smith", 
-      organization: "Engineering Club",
-      submittedDate: "2024-10-31",
-      priority: "medium",
-      status: "pending"
-    },
-    {
-      id: 3,
-      title: "Event Expense Report",
-      officer: "Mike Johnson",
-      organization: "Drama Society",
-      submittedDate: "2024-10-30",
-      priority: "low",
-      status: "pending"
-    }
-  ];
-
-  const recentApprovals = [
-    {
-      id: 1,
-      title: "Quarterly Financial Report",
-      officer: "Sarah Wilson",
-      approvedDate: "2024-10-30",
-      approvedBy: "Admin Team"
-    },
-    {
-      id: 2,
-      title: "Training Workshop Receipt",
-      officer: "David Brown",
-      approvedDate: "2024-10-29",
-      approvedBy: "Finance Admin"
-    },
-    {
-      id: 3,
-      title: "Student Activity Budget",
-      officer: "Maria Garcia",
-      approvedDate: "2024-10-28",
-      approvedBy: "Admin Team"
-    },
-    {
-      id: 4,
-      title: "Equipment Maintenance Receipt",
-      officer: "Robert Chen",
-      approvedDate: "2024-10-27",
-      approvedBy: "Facility Admin"
-    },
-    {
-      id: 5,
-      title: "Conference Registration Fee",
-      officer: "Lisa Anderson",
-      approvedDate: "2024-10-26",
-      approvedBy: "Finance Admin"
-    }
-  ];
-
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
@@ -198,6 +249,10 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  if (loading) {
+    return <div className="p-6 text-center">Loading dashboard...</div>;
+  }
+
   return (
     <>
       <PageMeta 
@@ -205,16 +260,22 @@ const AdminDashboard: React.FC = () => {
         description={`${isFullAdmin ? 'Full system administration' : 'Document approval administration'} dashboard`}
       />
       <div className="p-6">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            {isFullAdmin ? 'Admin Dashboard - Full Control' : 'Admin Dashboard - Approval Management'}
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            {isFullAdmin 
-              ? 'Complete system overview and management capabilities'
-              : 'Review and approve document submissions from officers'
-            }
-          </p>
+        {/* Header with Demo controls */}
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              {isFullAdmin ? 'Admin Dashboard - Full Control' : 'Admin Dashboard - Approval Management'}
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              {isFullAdmin 
+                ? 'Complete system overview and management capabilities'
+                : 'Review and approve document submissions from officers'
+              }
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            
+          </div>
         </div>
 
         {/* Key Metrics */}
@@ -229,7 +290,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Pending Submissions</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{dashboardData.pendingSubmissions}</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.pendingSubmissions}</p>
                 </div>
               </div>
             </div>
@@ -245,7 +306,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Recent Approvals</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{dashboardData.recentApprovals}</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.recentApprovals}</p>
                 </div>
               </div>
             </div>
@@ -261,7 +322,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Total Documents</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{dashboardData.totalDocuments}</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalDocuments}</p>
                 </div>
               </div>
             </div>
@@ -277,7 +338,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Active Users</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{dashboardData.activeUsers}</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.activeUsers}</p>
                 </div>
               </div>
             </div>
@@ -294,39 +355,43 @@ const AdminDashboard: React.FC = () => {
             </div>
             
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
-              {recentSubmissions.map((submission) => (
-                <div key={submission.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                        {submission.title}
-                      </h3>
-                      <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400 mb-2">
-                        <div>Officer: {submission.officer}</div>
-                        <div>Organization: {submission.organization}</div>
-                        <div>Submitted: {submission.submittedDate}</div>
+              {recentSubmissions.length === 0 ? (
+                <div className="p-6 text-center text-gray-500">No pending submissions</div>
+              ) : (
+                recentSubmissions.map((submission) => (
+                  <div key={submission.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                          {submission.title}
+                        </h3>
+                        <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400 mb-2">
+                          <div>Officer: {submission.officer}</div>
+                          <div>Organization: {submission.organization}</div>
+                          <div>Submitted: {submission.submittedDate}</div>
+                        </div>
+                        <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(submission.priority)}`}>
+                          {submission.priority.charAt(0).toUpperCase() + submission.priority.slice(1)} Priority
+                        </span>
                       </div>
-                      <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(submission.priority)}`}>
-                        {submission.priority.charAt(0).toUpperCase() + submission.priority.slice(1)} Priority
-                      </span>
-                    </div>
-                    <div className="flex gap-2 ml-4">
-                      <button 
-                        onClick={() => handleActionClick(submission, 'approve')}
-                        className="px-3 py-1 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/50 rounded transition-colors text-sm"
-                      >
-                        Approve
-                      </button>
-                      <button 
-                        onClick={() => handleActionClick(submission, 'reject')}
-                        className="px-3 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 rounded transition-colors text-sm"
-                      >
-                        Reject
-                      </button>
+                      <div className="flex gap-2 sm:ml-4">
+                        <button 
+                          onClick={() => handleActionClick(submission, 'approve')}
+                          className="px-3 py-1 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/50 rounded transition-colors text-sm"
+                        >
+                          Approve
+                        </button>
+                        <button 
+                          onClick={() => handleActionClick(submission, 'reject')}
+                          className="px-3 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 rounded transition-colors text-sm"
+                        >
+                          Reject
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 
@@ -338,34 +403,38 @@ const AdminDashboard: React.FC = () => {
             </div>
             
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
-              {recentApprovals.map((approval) => (
-                <div key={approval.id} className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                        {approval.title}
-                      </h3>
-                      <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                        <div>Officer: {approval.officer}</div>
-                        <div>Approved: {approval.approvedDate}</div>
-                        <div>By: {approval.approvedBy}</div>
+              {recentApprovals.length === 0 ? (
+                <div className="p-6 text-center text-gray-500">No recent approvals</div>
+              ) : (
+                recentApprovals.map((approval) => (
+                  <div key={approval.id} className="p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                          {approval.title}
+                        </h3>
+                        <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                          <div>Officer: {approval.officer}</div>
+                          <div>Approved: {approval.approvedDate}</div>
+                          <div>By: {approval.approvedBy}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 sm:ml-4">
+                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-green-600 text-sm font-medium">Approved</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 ml-4">
-                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span className="text-green-600 text-sm font-medium">Approved</span>
-                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
 
         {/* System Alerts (Full Admin Only) */}
-        {isFullAdmin && dashboardData.systemAlerts > 0 && (
+        {isFullAdmin && stats.systemAlerts > 0 && (
           <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6">
             <div className="flex items-center gap-3">
               <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -373,10 +442,10 @@ const AdminDashboard: React.FC = () => {
               </svg>
               <div>
                 <h3 className="text-lg font-medium text-yellow-800 dark:text-yellow-200">
-                  System Alerts ({dashboardData.systemAlerts})
+                  System Alerts ({stats.systemAlerts})
                 </h3>
                 <p className="text-yellow-700 dark:text-yellow-300">
-                  There are {dashboardData.systemAlerts} system alerts that require your attention.
+                  There are {stats.systemAlerts} system alerts that require your attention.
                 </p>
               </div>
               <button 

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import PageMeta from '../../../components/common/PageMeta';
 
 interface User {
@@ -32,6 +33,8 @@ const UserManagement: React.FC = () => {
     status: ''
   });
   const [customOrganization, setCustomOrganization] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   // New user form state
   const [newUserData, setNewUserData] = useState({
@@ -61,95 +64,46 @@ const UserManagement: React.FC = () => {
     { value: 'cosoa', label: 'Commission on Student Organizations and Accreditation (COSOA)' }
   ];
 
-  const [users, setUsers] = useState([
-    {
-      id: 1,
-      name: "John Doe",
-      email: "john.doe@pupsmb.edu.ph",
-      role: "officer",
-      organization: "Student Council",
-      status: "active",
-      lastLogin: "2024-11-01T14:30:00Z",
-      createdDate: "2024-01-15T09:00:00Z",
-      submissionsCount: 15,
-      approvalRate: 89
-    },
-    {
-      id: 2,
-      name: "Jane Smith",
-      email: "jane.smith@pupsmb.edu.ph",
-      role: "officer",
-      organization: "Engineering Club",
-      status: "active",
-      lastLogin: "2024-10-31T16:45:00Z",
-      createdDate: "2024-02-10T11:30:00Z",
-      submissionsCount: 23,
-      approvalRate: 95
-    },
-    {
-      id: 3,
-      name: "Mike Johnson",
-      email: "mike.johnson@pupsmb.edu.ph",
-      role: "officer",
-      organization: "Drama Society",
-      status: "inactive",
-      lastLogin: "2024-10-20T10:15:00Z",
-      createdDate: "2024-03-05T14:20:00Z",
-      submissionsCount: 8,
-      approvalRate: 75
-    },
-    {
-      id: 4,
-      name: "Sarah Wilson",
-      email: "sarah.wilson@pupsmb.edu.ph",
-      role: "admin_approval",
-      organization: "Administration",
-      status: "active",
-      lastLogin: "2024-11-01T09:20:00Z",
-      createdDate: "2024-01-01T08:00:00Z",
-      submissionsCount: 0,
-      approvalRate: 0
-    },
-    {
-      id: 5,
-      name: "David Brown",
-      email: "david.brown@pupsmb.edu.ph",
-      role: "officer",
-      organization: "Environmental Club",
-      status: "active",
-      lastLogin: "2024-10-30T13:10:00Z",
-      createdDate: "2024-04-12T10:45:00Z",
-      submissionsCount: 12,
-      approvalRate: 83
-    },
-    {
-      id: 6,
-      name: "Lisa Chen",
-      email: "lisa.chen@pupsmb.edu.ph",
-      role: "viewer",
-      organization: "General Public",
-      status: "active",
-      lastLogin: "2024-11-01T11:30:00Z",
-      createdDate: "2024-06-20T15:20:00Z",
-      submissionsCount: 0,
-      approvalRate: 0
-    },
-    {
-      id: 7,
-      name: "Robert Taylor",
-      email: "robert.taylor@pupsmb.edu.ph",
-      role: "officer",
-      organization: "Sports Committee",
-      status: "suspended",
-      lastLogin: "2024-10-15T14:20:00Z",
-      createdDate: "2024-05-08T12:30:00Z",
-      submissionsCount: 6,
-      approvalRate: 50
+  const [users, setUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const res = await axios.get('/api/v1/users', {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { limit: 100 }
+      });
+
+      if (res.data.success) {
+        const mappedUsers = res.data.data.users.map((user: any) => ({
+          id: user.id,
+          name: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+          role: user.role,
+          organization: user.organization || 'N/A',
+          status: 'active', // Mock status for now
+          lastLogin: user.updatedAt, // Mock last login
+          createdDate: user.createdAt,
+          submissionsCount: 0, // Mock count
+          approvalRate: 0 // Mock rate
+        }));
+        setUsers(mappedUsers);
+      }
+      setLoading(false);
+    } catch (err: any) {
+      console.error('Error fetching users:', err);
+      setError(err.response?.data?.message || 'Failed to fetch users');
+      setLoading(false);
     }
-  ]);
+  };
 
   // Handler for adding new user
-  const handleAddUser = () => {
+  const handleAddUser = async () => {
     if (!newUserData.name || !newUserData.email || !newUserData.role || !newUserData.organization || !newUserData.password || !newUserData.confirmPassword) {
       alert('Please fill in all required fields');
       return;
@@ -160,35 +114,39 @@ const UserManagement: React.FC = () => {
       return;
     }
 
-    if (users.some(user => user.email === newUserData.email)) {
-      alert('User with this email already exists');
-      return;
+    try {
+      // Split name into first and last name
+      const nameParts = newUserData.name.split(' ');
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(' ') || 'User';
+
+      const token = localStorage.getItem('token');
+      await axios.post('/api/v1/auth/register', {
+        firstName,
+        lastName,
+        email: newUserData.email,
+        password: newUserData.password,
+        role: newUserData.role,
+        organization: newUserData.organization === 'custom' ? newUserCustomOrg : newUserData.organization
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      await fetchUsers();
+      
+      setNewUserData({
+        name: '',
+        email: '',
+        role: '',
+        organization: '',
+        password: '',
+        confirmPassword: ''
+      });
+      setNewUserCustomOrg('');
+      setShowAddUserModal(false);
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to create user');
     }
-
-    const newUser = {
-      id: Math.max(...users.map(u => u.id)) + 1,
-      name: newUserData.name,
-      email: newUserData.email,
-      role: newUserData.role,
-      organization: newUserData.organization === 'custom' ? newUserCustomOrg : newUserData.organization,
-      status: 'active',
-      lastLogin: '',
-      createdDate: new Date().toISOString(),
-      submissionsCount: 0,
-      approvalRate: 0
-    };
-
-    setUsers([...users, newUser]);
-    setNewUserData({
-      name: '',
-      email: '',
-      role: '',
-      organization: '',
-      password: '',
-      confirmPassword: ''
-    });
-    setNewUserCustomOrg('');
-    setShowAddUserModal(false);
   };
 
   const roleOptions = [
@@ -291,16 +249,22 @@ const UserManagement: React.FC = () => {
       return;
     }
     
-    // Here you would typically make an API call to suspend/activate the user
-    const action = selectedUser?.status === 'suspended' ? 'Activating' : 'Suspending';
-    console.log(`${action} user:`, selectedUser?.name);
-    if (selectedUser?.status !== 'suspended') {
-      console.log('Suspension reason:', suspensionReason);
+    try {
+      const token = localStorage.getItem('token');
+      // Toggle status logic would go here
+      // For now just update local state
+      const newStatus = selectedUser?.status === 'suspended' ? 'active' : 'suspended';
+      
+      // await axios.put(`/api/v1/users/${selectedUser?.id}/status`, { status: newStatus }, ...);
+      
+      setUsers(users.map(u => u.id === selectedUser?.id ? { ...u, status: newStatus } : u));
+      
+      setShowSuspendModal(false);
+      setSelectedUser(null);
+      setSuspensionReason('');
+    } catch (err) {
+      console.error('Failed to update user status', err);
     }
-    
-    setShowSuspendModal(false);
-    setSelectedUser(null);
-    setSuspensionReason('');
   };
 
   const confirmEditUser = () => {
@@ -318,25 +282,39 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const handleSaveUser = () => {
+  const handleSaveUser = async () => {
     // Get the final organization value (use custom if "Others" is selected)
     const finalOrganization = editFormData.organization === 'Others' ? customOrganization : editFormData.organization;
     
-    // Here you would typically make an API call to update the user
-    console.log('Saving user with data:', {
-      ...editFormData,
-      organization: finalOrganization
-    });
-    setShowEditForm(false);
-    setSelectedUser(null);
-    setEditFormData({
-      name: '',
-      email: '',
-      role: '',
-      organization: '',
-      status: ''
-    });
-    setCustomOrganization('');
+    try {
+      const token = localStorage.getItem('token');
+      const nameParts = editFormData.name.split(' ');
+      
+      await axios.put(`/api/v1/users/${selectedUser?.id}`, {
+        firstName: nameParts[0],
+        lastName: nameParts.slice(1).join(' '),
+        email: editFormData.email,
+        role: editFormData.role,
+        // organization: finalOrganization // Add to backend if needed
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      await fetchUsers();
+      
+      setShowEditForm(false);
+      setSelectedUser(null);
+      setEditFormData({
+        name: '',
+        email: '',
+        role: '',
+        organization: '',
+        status: ''
+      });
+      setCustomOrganization('');
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to update user');
+    }
   };
 
   const handleCancelEdit = () => {
@@ -392,7 +370,7 @@ const UserManagement: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Total Users</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{userStats.total}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{users.length}</p>
               </div>
             </div>
           </div>
@@ -406,7 +384,7 @@ const UserManagement: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Active Users</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{userStats.active}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{users.filter(u => u.status === 'active').length}</p>
               </div>
             </div>
           </div>
@@ -420,7 +398,7 @@ const UserManagement: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Officers</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{userStats.officers}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{users.filter(u => u.role === 'officer').length}</p>
               </div>
             </div>
           </div>
@@ -434,7 +412,7 @@ const UserManagement: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Admins</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{userStats.admins}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{users.filter(u => u.role.startsWith('admin')).length}</p>
               </div>
             </div>
           </div>
@@ -530,7 +508,21 @@ const UserManagement: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredUsers.map((user) => (
+                {loading ? (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-12 text-center">
+                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      <p className="mt-2 text-gray-500 dark:text-gray-400">Loading users...</p>
+                    </td>
+                  </tr>
+                ) : filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                      No users found matching your criteria
+                    </td>
+                  </tr>
+                ) : (
+                filteredUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <td className="px-6 py-4">
                       <div className="flex items-center">
@@ -605,12 +597,13 @@ const UserManagement: React.FC = () => {
                       </div>
                     </td>
                   </tr>
-                ))}
+                ))
+                )}
               </tbody>
             </table>
           </div>
 
-          {filteredUsers.length === 0 && (
+          {filteredUsers.length === 0 && !loading && (
             <div className="p-12 text-center">
               <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />

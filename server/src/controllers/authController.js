@@ -57,7 +57,7 @@ const register = asyncHandler(async (req, res) => {
   if (!lastName) basicErrors.push('Last name is required');
   
   if (basicErrors.length > 0) {
-    console.log('❌ Basic validation failed:', basicErrors);
+    console.log('Basic validation failed:', basicErrors);
     return res.status(400).json({
       success: false,
       message: 'Basic validation failed',
@@ -76,7 +76,7 @@ const register = asyncHandler(async (req, res) => {
   //   });
   // }
 
-  // Basic sanitization to prevent major issues
+  // Basic sanitization to prevent major issues  
   const sanitizedData = {
     email: email?.trim(),
     password: password,
@@ -84,8 +84,8 @@ const register = asyncHandler(async (req, res) => {
     lastName: lastName?.trim(),
     middleInitial: middleInitial?.trim() || null,
     studentNumber: studentNumber?.trim() || null,
-    schoolNumber: schoolNumber?.trim() || null,
-    employeeId: (req.body.employeeId || schoolNumber)?.trim() || null,
+    schoolNumber: (req.body.schoolNumber || schoolNumber)?.trim() || null,
+    employeeId: (req.body.schoolNumber || req.body.employeeId || schoolNumber)?.trim() || null,
     accountType: accountType?.trim() || 'Organization Member (Viewer)',
     organization: organization?.trim() || 'Default Organization'
   };
@@ -141,7 +141,7 @@ const register = asyncHandler(async (req, res) => {
       accountType: user.account_type
     }, 'AUTH');
   } catch (userCreateError) {
-    console.error('❌ User creation failed:', {
+    console.error('User creation failed:', {
       message: userCreateError.message,
       code: userCreateError.code,
       detail: userCreateError.detail,
@@ -180,6 +180,15 @@ const register = asyncHandler(async (req, res) => {
   });
 
   logger.auth.registrationAttempt(true, user.account_type, sanitizedData.organization, req.ip);
+
+  // Log reCAPTCHA verification status if available
+  if (req.recaptchaVerification) {
+    logger.info('Registration completed with reCAPTCHA verification', {
+      userId: user.id,
+      recaptchaScore: req.recaptchaVerification.score,
+      recaptchaBypassed: req.recaptchaVerification.bypassed || false
+    }, 'AUTH');
+  }
 
   res.status(201).json({
     success: true,
@@ -249,6 +258,31 @@ const login = asyncHandler(async (req, res) => {
   if (email) {
     logger.debug('Looking up user by email', { emailDomain: email.split('@')[1] }, 'AUTH');
     user = await User.findByEmail(email);
+
+    // SECURITY FIX: If student number is ALSO provided, verify it matches the user found by email
+    // This prevents scenarios where a user provides a valid email but an incorrect student number
+    if (user && studentNumber) {
+      const dbStudentNumber = user.student_number ? user.student_number.toLowerCase() : '';
+      const dbEmployeeId = user.employee_id ? user.employee_id.toLowerCase() : '';
+      const inputStudentNumber = studentNumber.toLowerCase();
+
+      // Check against student number OR employee ID (for faculty)
+      const isMatch = (dbStudentNumber && dbStudentNumber === inputStudentNumber) || 
+                      (dbEmployeeId && dbEmployeeId === inputStudentNumber);
+
+      if (!isMatch) {
+        logger.warn('Login failed - credential mismatch', { 
+          userId: user.id, 
+          expectedStudent: user.student_number,
+          expectedEmployee: user.employee_id,
+          received: studentNumber 
+        }, 'AUTH');
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid credentials'
+        });
+      }
+    }
   } else if (studentNumber) {
     logger.debug('Looking up user by student number', null, 'AUTH');
     user = await User.findByStudentNumber(studentNumber);
@@ -281,6 +315,15 @@ const login = asyncHandler(async (req, res) => {
   }
 
   logger.auth.loginAttempt(true, user.id, user.account_type, req.ip);
+
+  // Log reCAPTCHA verification status if available
+  if (req.recaptchaVerification) {
+    logger.info('Login completed with reCAPTCHA verification', {
+      userId: user.id,
+      recaptchaScore: req.recaptchaVerification.score,
+      recaptchaBypassed: req.recaptchaVerification.bypassed || false
+    }, 'AUTH');
+  }
 
   // Generate tokens
   const accessToken = generateToken(user.id);
@@ -339,7 +382,8 @@ const getMe = asyncHandler(async (req, res) => {
         middleInitial: user.middle_name,
         studentNumber: user.student_number,
         schoolNumber: user.employee_id,
-        organization: user.organization_id
+        organization: user.organization_id,
+        accountType: user.account_type
       }
     }
   });

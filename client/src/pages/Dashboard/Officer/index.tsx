@@ -1,76 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import axios from 'axios';
+import Select from '../../../components/form/Select';
+import Input from '../../../components/form/input/InputField';
 import PageMeta from '../../../components/common/PageMeta';
 import UploadDocuments from './UploadDocuments';
-import { submissions as mySubmissionsData } from './MySubmissions';
-import { activities as activityLogData } from './ActivityLog';
 import SubmissionDetailsModal from '../../../components/SubmissionDetailsModal';
-import { Submission, OfficerSubmission, ActivityLogItem } from '../../../types/submission';
+import { Submission } from '../../../types/submission';
+
+// Define Activity interface locally
+interface Activity {
+  id: number;
+  type: string;
+  title: string;
+  description: string;
+  user: string;
+  timestamp: string;
+  details: any;
+  icon: string;
+  color: string;
+}
 
 const OfficerDashboard: React.FC = () => {
-  // Mock data for submission status
-  const statusOverview = {
-    pending: { count: 8, percentage: 40 },
-    approved: { count: 10, percentage: 50 },
-    rejected: { count: 2, percentage: 10 }
-  };
+  const [statusOverview, setStatusOverview] = useState({
+    pending: { count: 0, percentage: 0 },
+    approved: { count: 0, percentage: 0 },
+    rejected: { count: 0, percentage: 0 }
+  });
 
-  const [recentSubmissions, setRecentSubmissions] = useState<(OfficerSubmission | Submission)[]>([
-    {
-      id: 1,
-      title: "Monthly Budget Report - October 2024",
-      type: "Financial Report",
-      submittedDate: "2024-10-31",
-      status: "pending",
-      reviewer: "Admin Department"
-    },
-    {
-      id: 2,
-      title: "Equipment Purchase Receipt - Laptops",
-      type: "Receipt",
-      submittedDate: "2024-10-28",
-      status: "approved",
-      reviewer: "Finance Team",
-      approvedDate: "2024-10-30"
-    },
-    {
-      id: 3,
-      title: "Travel Expense Report - Conference",
-      type: "Expense Report",
-      submittedDate: "2024-10-25",
-      status: "rejected",
-      reviewer: "Accounting",
-      rejectionReason: "Missing required receipts"
-    },
-    {
-      id: 4,
-      title: "Quarterly Performance Report Q3",
-      type: "Performance Report",
-      submittedDate: "2024-10-20",
-      status: "approved",
-      reviewer: "Management",
-      approvedDate: "2024-10-22"
-    },
-    {
-      id: 5,
-      title: "Office Supplies Purchase Order",
-      type: "Purchase Order",
-      submittedDate: "2024-10-18",
-      status: "pending",
-      reviewer: "Procurement"
-    }
-  ]);
+  const [recentSubmissions, setRecentSubmissions] = useState<Submission[]>([]);
+  const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // Show Recent Submissions by default on initial load, but do NOT mark any quick-action button as "active" until clicked
-  const [showMySubmissions, setShowMySubmissions] = useState(true);
-  const [showActivity, setShowActivity] = useState(false);
-  // Track which quick-action (if any) the user has explicitly activated. null means none yet.
-  const [activeQuickAction, setActiveQuickAction] = useState<string | null>(null);
-  // Preload recent activity data so the Activity panel can be shown quickly when requested
-  const [recentActivity, setRecentActivity] = useState<ActivityLogItem[]>(activityLogData);
+  
+  const [filterType, setFilterType] = useState('submissions');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (isUploadOpen) {
@@ -84,12 +51,102 @@ const OfficerDashboard: React.FC = () => {
   }, [isUploadOpen]);
 
   useEffect(() => {
-    // Modal should only close when the X is clicked; do not close on Escape
-    return () => {};
-  }, [isUploadOpen]);
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const headers = { Authorization: `Bearer ${token}` };
 
-  const handleSubmitSuccess = (submission: OfficerSubmission | Submission) => {
-    // Prepend new submission and close modal handled by UploadDocuments when it calls onClose
+        // Fetch Stats
+        const statsRes = await axios.get('/api/v1/submissions/stats', { headers });
+        if (statsRes.data.success) {
+            const stats = statsRes.data.data;
+            setStatusOverview({
+                pending: { count: parseInt(stats.pending_submissions), percentage: 0 },
+                approved: { count: parseInt(stats.public_documents), percentage: 0 },
+                rejected: { count: 0, percentage: 0 } // Backend doesn't return rejected count yet
+            });
+        }
+
+        // Fetch Recent Submissions
+        const submissionsRes = await axios.get('/api/v1/submissions?limit=5', { headers });
+        if (submissionsRes.data.success) {
+             const mappedSubmissions = submissionsRes.data.data.map((s: any) => ({
+                id: s.id,
+                title: s.title,
+                category: s.category || s.type,
+                submittedDate: s.created_at ? s.created_at.split('T')[0] : '',
+                status: s.status,
+                reviewer: s.reviewer_first_name ? `${s.reviewer_first_name} ${s.reviewer_last_name}` : 'Pending',
+                files: s.files || [],
+                priority: s.priority,
+                description: s.description,
+                approvedDate: s.approved_date ? s.approved_date.split('T')[0] : undefined,
+                rejectedDate: s.rejected_date ? s.rejected_date.split('T')[0] : undefined,
+                rejectionReason: s.rejection_reason
+              }));
+            setRecentSubmissions(mappedSubmissions);
+        }
+
+        // Fetch Recent Activity
+        const activityRes = await axios.get('/api/v1/submissions/notifications', { headers });
+        if (activityRes.data.success) {
+             const mappedActivities: Activity[] = activityRes.data.data.map((item: any) => {
+                 const type = mapActivityType(item.message);
+                 return {
+                    id: parseInt(item.id),
+                    type: type,
+                    title: item.project,
+                    description: item.message,
+                    user: item.user.name,
+                    timestamp: item.timestamp,
+                    details: { documentTitle: item.project },
+                    icon: getIconForType(type),
+                    color: getColorForType(type)
+                 };
+             });
+             setRecentActivity(mappedActivities);
+        }
+
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const mapActivityType = (message: string): string => {
+    const msg = message.toLowerCase();
+    if (msg.includes('submitted')) return 'submission';
+    if (msg.includes('approved')) return 'approval';
+    if (msg.includes('rejected')) return 'rejection';
+    if (msg.includes('updated')) return 'edit';
+    return 'system';
+  };
+
+  const getIconForType = (type: string): string => {
+      switch(type) {
+          case 'submission': return 'upload';
+          case 'approval': return 'check';
+          case 'rejection': return 'x';
+          case 'edit': return 'edit';
+          default: return 'info';
+      }
+  };
+
+  const getColorForType = (type: string): string => {
+      switch(type) {
+          case 'submission': return 'blue';
+          case 'approval': return 'green';
+          case 'rejection': return 'red';
+          case 'edit': return 'purple';
+          default: return 'gray';
+      }
+  };
+
+  const handleSubmitSuccess = (submission: Submission) => {
     setRecentSubmissions(prev => [submission, ...prev]);
   };
 
@@ -152,22 +209,25 @@ const OfficerDashboard: React.FC = () => {
       />
       <div className="p-6">
         <div className="mb-8">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
               Officer Dashboard
             </h1>
-            <button onClick={() => setIsUploadOpen(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+            <div className="flex flex-wrap items-center gap-2">
+              
+              <button onClick={() => setIsUploadOpen(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center flex-grow sm:flex-grow-0">
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
               Upload Document
-            </button>
+              </button>
+            </div>
           </div>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
             Monitor your document submissions and approval status
           </p>
         </div>
-        {/* Upload Modal: full-viewport wrapper so it always sits above header/sidebar */}
+        {/* Upload Modal */}
         {isUploadOpen && typeof document !== 'undefined' && createPortal(
           <div
             className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
@@ -242,37 +302,60 @@ const OfficerDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Quick Actions (Officer) - Announcements removed for Officer role */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-          <button
-            onClick={() => { 
-              setShowMySubmissions(true); 
-              setShowActivity(false); 
-              setRecentSubmissions(mySubmissionsData); 
-              setActiveQuickAction('submissions'); 
-            }}
-            aria-pressed={activeQuickAction === 'submissions'}
-            className={`w-full text-white p-4 rounded-lg transition-all duration-200 transform flex items-center justify-center ${activeQuickAction === 'submissions' ? 'bg-green-700 hover:bg-green-800 scale-105 shadow-lg ring-4 ring-green-200 dark:ring-green-900 font-semibold' : 'bg-green-600 hover:bg-green-700'}`}
-          >
-            <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            View Submissions
-          </button>
-          <button
-            onClick={() => { setShowActivity(true); setShowMySubmissions(false); setRecentActivity(activityLogData); setActiveQuickAction('activity'); }}
-            aria-pressed={activeQuickAction === 'activity'}
-            className={`w-full text-white p-4 rounded-lg transition-all duration-200 transform flex items-center justify-center ${activeQuickAction === 'activity' ? 'bg-purple-700 hover:bg-purple-800 scale-105 shadow-lg ring-4 ring-purple-200 dark:ring-purple-900 font-semibold' : 'bg-purple-600 hover:bg-purple-700'}`}
-          >
-            <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            Activity Log
-          </button>
+        {/* Filter and Search */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filter by</label>
+              <Select
+                options={[
+                  { value: 'submissions', label: 'View submissions' },
+                  { value: 'activity', label: 'Activity log' }
+                ]}
+                onChange={(value) => setFilterType(value)}
+                defaultValue="submissions"
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Search</label>
+              <div className="relative">
+                <Input
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-11"
+                />
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none">
+                  <svg
+                    className="fill-current"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      clipRule="evenodd"
+                      d="M9.16666 3.33332C5.945 3.33332 3.33332 5.945 3.33332 9.16666C3.33332 12.3883 5.945 15 9.16666 15C12.3883 15 15 12.3883 15 9.16666C15 5.945 12.3883 3.33332 9.16666 3.33332ZM1.66666 9.16666C1.66666 5.02452 5.02452 1.66666 9.16666 1.66666C13.3088 1.66666 16.6667 5.02452 16.6667 9.16666C16.6667 13.3088 13.3088 16.6667 9.16666 16.6667C5.02452 16.6667 1.66666 13.3088 1.66666 9.16666Z"
+                      fill=""
+                    />
+                    <path
+                      fillRule="evenodd"
+                      clipRule="evenodd"
+                      d="M13.2857 13.2857C13.6112 12.9603 14.1388 12.9603 14.4642 13.2857L18.0892 16.9107C18.4147 17.2362 18.4147 17.7638 18.0892 18.0892C17.7638 18.4147 17.2362 18.4147 16.9107 18.0892L13.2857 14.4642C12.9603 14.1388 12.9603 13.6112 13.2857 13.2857Z"
+                      fill=""
+                    />
+                  </svg>
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Recent Submissions (visible after clicking View Submissions) */}
-        {showMySubmissions && (
+        {/* Recent Submissions */}
+        {filterType === 'submissions' && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="p-6 border-b border-gray-200 dark:border-gray-700">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -281,103 +364,112 @@ const OfficerDashboard: React.FC = () => {
           </div>
           
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {recentSubmissions.map((submission) => (
-              <div key={submission.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                        {submission.title}
-                      </h3>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(submission.status)}`}>
-                        {submission.status.charAt(0).toUpperCase() + submission.status.slice(1)}
-                      </span>
+            {loading ? (
+                <div className="p-6 text-center text-gray-500">Loading submissions...</div>
+            ) : recentSubmissions.filter(s => 
+                s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                s.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (s.category || s.type || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (s.reviewer && s.reviewer.toLowerCase().includes(searchQuery.toLowerCase()))
+            ).length === 0 ? (
+                <div className="p-6 text-center text-gray-500">No submissions found matching your search.</div>
+            ) : (
+                recentSubmissions.filter(s => 
+                    s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    s.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (s.category || s.type || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (s.reviewer && s.reviewer.toLowerCase().includes(searchQuery.toLowerCase()))
+                ).map((submission) => (
+                <div key={submission.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div className="flex-1">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                            {submission.title}
+                        </h3>
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(submission.status)}`}>
+                            {submission.status.charAt(0).toUpperCase() + submission.status.slice(1)}
+                        </span>
+                        </div>
+                        
+                        <p className="text-gray-600 dark:text-gray-400 mb-2">
+                        Type: {submission.category || submission.type}
+                        </p>
+                        
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-500 dark:text-gray-400">
+                        <span>Submitted: {submission.submittedDate}</span>
+                        <span>Reviewer: {submission.reviewer}</span>
+                        {submission.status === 'approved' && submission.approvedDate && (
+                            <span className="text-green-600">Approved: {submission.approvedDate}</span>
+                        )}
+                        {submission.status === 'rejected' && submission.rejectionReason && (
+                            <span className="text-red-600">Reason: {submission.rejectionReason}</span>
+                        )}
+                        </div>
                     </div>
                     
-                    <p className="text-gray-600 dark:text-gray-400 mb-2">
-                      Type: {'type' in submission ? submission.type : submission.category}
-                    </p>
-                    
-                    <div className="flex items-center gap-6 text-sm text-gray-500 dark:text-gray-400">
-                      <span>Submitted: {submission.submittedDate}</span>
-                      <span>Reviewer: {submission.reviewer}</span>
-                      {submission.status === 'approved' && submission.approvedDate && (
-                        <span className="text-green-600">Approved: {submission.approvedDate}</span>
-                      )}
-                      {submission.status === 'rejected' && submission.rejectionReason && (
-                        <span className="text-red-600">Reason: {submission.rejectionReason}</span>
-                      )}
+                    <div className="flex items-center gap-3 sm:ml-6">
+                        {getStatusIcon(submission.status)}
+                        <button
+                        onClick={() => {
+                            setSelectedSubmission(submission);
+                            setIsModalOpen(true);
+                        }}
+                        className="px-3 py-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/50 rounded transition-colors"
+                        >
+                        View Details
+                        </button>
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3 ml-6">
-                    {getStatusIcon(submission.status)}
-                    <button
-                      onClick={() => {
-                        // normalize to Submission shape expected by SubmissionDetailsModal
-                        const normalized: Submission = {
-                          id: submission.id,
-                          title: submission.title,
-                          category: ('category' in submission ? submission.category : submission.type) ?? '',
-                          submittedDate: submission.submittedDate ?? '',
-                          status: submission.status ?? '',
-                          reviewer: submission.reviewer,
-                          files: ('files' in submission ? submission.files : []) ?? [],
-                          priority: ('priority' in submission ? submission.priority : '') ?? '',
-                          description: ('description' in submission ? submission.description : '') ?? '',
-                          approvedDate: submission.approvedDate,
-                          rejectedDate: ('rejectedDate' in submission ? submission.rejectedDate : undefined),
-                          rejectionReason: submission.rejectionReason
-                        };
-                        setSelectedSubmission(normalized);
-                        setIsModalOpen(true);
-                      }}
-                      className="px-3 py-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/50 rounded transition-colors"
-                    >
-                      View Details
-                    </button>
-                  </div>
+                    </div>
                 </div>
-              </div>
-            ))}
+                ))
+            )}
           </div>
-          
-          
           </div>
         )}
-  <SubmissionDetailsModal submission={selectedSubmission} open={isModalOpen} onClose={() => { setIsModalOpen(false); setSelectedSubmission(null); }} />
+        <SubmissionDetailsModal submission={selectedSubmission} open={isModalOpen} onClose={() => { setIsModalOpen(false); setSelectedSubmission(null); }} />
 
-        {/* Recent Activity (visible after clicking Activity Log) */}
-        {showActivity && (
+        {/* Recent Activity */}
+        {filterType === 'activity' && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mt-6">
             <div className="p-6 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Recent Activity</h2>
             </div>
 
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
-              {recentActivity.slice(0, 8).map((act) => (
-                <div key={act.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">{act.title}</h3>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">{act.type}</span>
-                      </div>
-                      <p className="text-gray-600 dark:text-gray-400 mb-2">{act.description}</p>
-                      <div className="flex items-center gap-6 text-sm text-gray-500 dark:text-gray-400">
-                        <span>{act.user}</span>
-                        <span>•</span>
-                        <span>{formatTimestamp(act.timestamp)}</span>
-                      </div>
+              {loading ? (
+                  <div className="p-6 text-center text-gray-500">Loading activity...</div>
+              ) : recentActivity.filter(act => 
+                  act.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  act.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  act.user.toLowerCase().includes(searchQuery.toLowerCase())
+              ).length === 0 ? (
+                  <div className="p-6 text-center text-gray-500">No activity found matching your search.</div>
+              ) : (
+                  recentActivity.filter(act => 
+                      act.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      act.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      act.user.toLowerCase().includes(searchQuery.toLowerCase())
+                  ).slice(0, 8).map((act) => (
+                    <div key={act.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                    <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-lg font-medium text-gray-900 dark:text-white">{act.title}</h3>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">{act.type}</span>
+                        </div>
+                        <p className="text-gray-600 dark:text-gray-400 mb-2">{act.description}</p>
+                        <div className="flex items-center gap-6 text-sm text-gray-500 dark:text-gray-400">
+                            <span>{act.user}</span>
+                            <span>•</span>
+                            <span>{formatTimestamp(act.timestamp)}</span>
+                        </div>
+                        </div>
                     </div>
-
-                    {/* right-side controls removed to simplify activity items (no indicator or View button) */}
-                  </div>
-                </div>
-              ))}
+                    </div>
+                ))
+              )}
             </div>
-
-            
           </div>
         )}
       </div>

@@ -1,5 +1,5 @@
 {
-  "name": "tailadmin-react",
+  "name": "pupsmb-transparatech",
   "private": true,
   "version": "2.0.2",
   "type": "module",
@@ -18,6 +18,7 @@
     "@fullcalendar/timegrid": "^6.1.15",
     "@react-jvectormap/core": "^1.0.4",
     "@react-jvectormap/world": "^1.1.2",
+    "@types/react-google-recaptcha": "^2.1.9",
     "@types/react-router-dom": "^5.3.3",
     "apexcharts": "^4.1.0",
     "axios": "^1.13.2",
@@ -30,6 +31,7 @@
     "react-dom": "^19.0.0",
     "react-dropzone": "^14.3.5",
     "react-flatpickr": "^4.0.11",
+    "react-google-recaptcha": "^3.1.0",
     "react-helmet-async": "^2.0.5",
     "react-router": "^7.1.5",
     "react-router-dom": "^7.9.5",

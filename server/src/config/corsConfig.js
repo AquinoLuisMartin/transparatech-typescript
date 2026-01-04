@@ -21,7 +21,7 @@ const parseOrigins = (originString) => {
         new URL(origin);
         return true;
       } catch {
-        console.warn(`⚠️  Invalid CORS origin ignored: ${origin}`);
+        console.warn(`Invalid CORS origin ignored: ${origin}`);
         return false;
       }
     });
@@ -50,11 +50,11 @@ const getAllowedOrigins = () => {
       );
       
       if (hasLocalhost) {
-        console.error('🚨 CORS Error: Localhost origins not allowed in production');
+        console.error('CORS Error: Localhost origins not allowed in production');
         throw new Error('Localhost origins are not permitted in production');
       }
       
-      console.log('✅ CORS Production Origins:', envOrigins);
+      console.log('CORS Production Origins:', envOrigins);
       return envOrigins;
       
     case 'test':
@@ -65,7 +65,7 @@ const getAllowedOrigins = () => {
         'http://localhost:3001'
       ];
       
-      console.log('✅ CORS Test Origins:', testOrigins);
+      console.log('CORS Test Origins:', testOrigins);
       return testOrigins;
       
     case 'development':
@@ -81,7 +81,7 @@ const getAllowedOrigins = () => {
         'http://127.0.0.1:3000'
       ];
       
-      console.log('✅ CORS Development Origins:', devOrigins);
+      console.log('CORS Development Origins:', devOrigins);
       return devOrigins;
   }
 };
@@ -109,13 +109,13 @@ const getCorsConfig = () => {
     origin: (origin, callback) => {
       // Log CORS requests in development
       if (env === 'development') {
-        console.log(`🌐 CORS Request from: ${origin || 'no-origin'}`);
+        console.log(`CORS Request from: ${origin || 'no-origin'}`);
       }
       
       if (isOriginAllowed(origin, allowedOrigins)) {
         callback(null, true);
       } else {
-        console.warn(`❌ CORS Blocked: ${origin || 'no-origin'} not in allowed origins`);
+        console.warn(`CORS Blocked: ${origin || 'no-origin'} not in allowed origins`);
         callback(new Error(`CORS: Origin ${origin || 'no-origin'} not allowed`), false);
       }
     },
@@ -158,16 +158,16 @@ const getCorsConfig = () => {
 const validateCorsConfig = () => {
   try {
     const config = getCorsConfig();
-    console.log('✅ CORS configuration validated successfully');
+    console.log('CORS configuration validated successfully');
     return config;
   } catch (error) {
-    console.error('❌ CORS configuration error:', error.message);
+    console.error('CORS configuration error:', error.message);
     
     if (process.env.NODE_ENV === 'production') {
-      console.error('🚨 Server cannot start with invalid CORS configuration in production');
+      console.error('Server cannot start with invalid CORS configuration in production');
       process.exit(1);
     } else {
-      console.warn('⚠️  Using fallback CORS configuration for development');
+      console.warn('Using fallback CORS configuration for development');
       return {
         origin: true, // Allow all origins in development fallback
         credentials: true

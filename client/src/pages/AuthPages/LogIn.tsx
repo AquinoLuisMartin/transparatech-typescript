@@ -10,6 +10,8 @@ interface FormData {
   password: string;
 }
 
+// Global types removed - reCAPTCHA disabled for demo
+
 
 
 const LogIn: React.FC = () => {
@@ -20,6 +22,8 @@ const LogIn: React.FC = () => {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [closeHover, setCloseHover] = useState<boolean>(false);
   const [showForgotPassword, setShowForgotPassword] = useState<boolean>(false);
+  const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
+  const [isSendingReset, setIsSendingReset] = useState<boolean>(false);
 
   const [forgotEmail, setForgotEmail] = useState<string>('');
   const [forgotTouched, setForgotTouched] = useState<boolean>(false);
@@ -36,20 +40,25 @@ const LogIn: React.FC = () => {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     
-    // Prepare login data - only send filled fields
-    const loginData: { password: string; email?: string; studentNumber?: string } = {
-      password: formData.password
-    };
+    // Prevent multiple submissions
+    if (isLoggingIn) return;
     
-    if (formData.email.trim()) {
-      loginData.email = formData.email;
-    }
-    
-    if (formData.studentNumber.trim()) {
-      loginData.studentNumber = formData.studentNumber;
-    }
-    
+    setIsLoggingIn(true);
+
     try {
+      // Prepare login data - only send filled fields
+      const loginData: { password: string; email?: string; studentNumber?: string } = {
+        password: formData.password
+      };
+      
+      if (formData.email.trim()) {
+        loginData.email = formData.email;
+      }
+      
+      if (formData.studentNumber.trim()) {
+        loginData.studentNumber = formData.studentNumber;
+      }
+      
       const response = await axios.post('/api/v1/auth/login', loginData);
 
       if (response.data.success) {
@@ -85,7 +94,7 @@ const LogIn: React.FC = () => {
         localStorage.setItem('accessToken', accessToken);
         
         console.log('Setting auth role:', authRole);
-        login(authRole);
+        login(authRole, user);
 
         // Navigate based on account type from database
         
@@ -133,6 +142,8 @@ const LogIn: React.FC = () => {
         console.error('Unexpected error:', error);
         alert('An unexpected error occurred: ' + (error instanceof Error ? error.message : 'Unknown error'));
       }
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -143,23 +154,41 @@ const LogIn: React.FC = () => {
     }
   };
 
-  const handleForgotSubmit = (e: FormEvent<HTMLFormElement>): void => {
+  const handleForgotSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
+    
+    if (isSendingReset) return;
+    
     setForgotTouched(true);
     if (!forgotEmail || !emailPattern.test(forgotEmail)) {
       setForgotError('Please enter a valid email address.');
       return;
     }
-    setForgotError('');
-    setForgotSuccess(`Password reset link sent to ${forgotEmail}.`);
+    
+    setIsSendingReset(true);
+    
+    try {
+      // TODO: Implement actual forgot password API call
+      // const response = await axios.post('/api/v1/auth/forgot-password', {
+      //   email: forgotEmail
+      // });
+      
+      setForgotError('');
+      setForgotSuccess(`Password reset link sent to ${forgotEmail}.`);
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      setForgotError('Failed to send reset link. Please try again.');
+    } finally {
+      setIsSendingReset(false);
+    }
   };
 
   const getRoleTitle = (): string => 'User Login';
   
 
   return (
-    <div className="login">
-      <div className="login__container">
+      <div className="login">
+        <div className="login__container">
         {showForgotPassword ? (
           <form className="login__form" onSubmit={handleForgotSubmit} style={{ position: 'relative' }}>
             <header className="login__header">
@@ -193,9 +222,19 @@ const LogIn: React.FC = () => {
                 <button 
                   type="submit" 
                   className="login__submit-btn" 
-                  disabled={!forgotEmail || !!forgotError || !emailPattern.test(forgotEmail)}
+                  disabled={!forgotEmail || !!forgotError || !emailPattern.test(forgotEmail) || isSendingReset}
                 >
-                  Send Reset Link
+                  {isSendingReset ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Sending...
+                    </div>
+                  ) : (
+                    'Send Reset Link'
+                  )}
                 </button>
                 <div style={{ textAlign: 'center' }}>
                   <button 
@@ -327,7 +366,26 @@ const LogIn: React.FC = () => {
               </div>
             </div>
 
-            <button type="submit" className="login__submit-btn">Log In</button>
+            <button 
+              type="submit" 
+              className="login__submit-btn"
+              disabled={isLoggingIn}
+            >
+              {isLoggingIn ? (
+                <div className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Logging In...
+                </div>
+              ) : (
+                'Log In'
+              )}
+            </button>
+
+            {/* reCAPTCHA disabled for demo */}
+
 
             <div className="login__footer">
               <p className="login__footer-text">Don't have an account?{' '}
@@ -335,7 +393,7 @@ const LogIn: React.FC = () => {
                   onClick={() => navigate('/auth/signup')}
                   className="text-blue-600 cursor-pointer hover:underline"
                 >
-                  Sign up here
+                  <strong>Create your account</strong>
                 </span>
               </p>
 
@@ -357,8 +415,8 @@ const LogIn: React.FC = () => {
             </div>
           </form>
         )}
+        </div>
       </div>
-    </div>
   );
 };
 

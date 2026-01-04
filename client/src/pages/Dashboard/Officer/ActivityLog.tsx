@@ -1,200 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import Calendar from '../../../components/ui/calendar';
 import PageMeta from '../../../components/common/PageMeta';
-import { ActivityCard } from '../../../components/ActivityCard.tsx';
+import { ActivityCard } from '../../../components/ActivityCard';
 
-// Activities array at module top-level; exported as a named export at the bottom.
-const activities = [
-  {
-    id: 1,
-    type: 'submission',
-    title: 'Document Submitted',
-    description: 'Monthly Budget Report - October 2024 submitted for review',
-    user: 'You',
-    timestamp: '2024-10-31T14:30:00Z',
-    details: {
-      documentTitle: 'Monthly Budget Report - October 2024',
-      category: 'Financial Report',
-      reviewer: 'Admin Department'
-    },
-    icon: 'upload',
-    color: 'blue'
-  },
-  {
-    id: 2,
-    type: 'approval',
-    title: 'Document Approved',
-    description: 'Equipment Purchase Receipt - Laptops has been approved',
-    user: 'Finance Team',
-    timestamp: '2024-10-30T16:45:00Z',
-    details: {
-      documentTitle: 'Equipment Purchase Receipt - Laptops',
-      approver: 'Finance Team',
-      comments: 'All documentation is complete and accurate.'
-    },
-    icon: 'check',
-    color: 'green'
-  },
-  {
-    id: 3,
-    type: 'comment',
-    title: 'Review Comment Added',
-    description: 'New comment on Monthly Budget Report - October 2024',
-    user: 'Admin Department',
-    timestamp: '2024-10-30T11:15:00Z',
-    details: {
-      documentTitle: 'Monthly Budget Report - October 2024',
-      comment: 'Please provide additional breakdown for Q4 projections.',
-      commenter: 'Admin Department'
-    },
-    icon: 'message',
-    color: 'yellow'
-  },
-  {
-    id: 4,
-    type: 'download',
-    title: 'Document Downloaded',
-    description: 'You downloaded Quarterly Performance Report Q3',
-    user: 'You',
-    timestamp: '2024-10-29T09:20:00Z',
-    details: {
-      documentTitle: 'Quarterly Performance Report Q3',
-      fileSize: '2.4 MB',
-      format: 'PDF'
-    },
-    icon: 'download',
-    color: 'indigo'
-  },
-  {
-    id: 5,
-    type: 'rejection',
-    title: 'Document Rejected',
-    description: 'Travel Expense Report - Conference has been rejected',
-    user: 'Accounting',
-    timestamp: '2024-10-27T13:30:00Z',
-    details: {
-      documentTitle: 'Travel Expense Report - Conference',
-      rejector: 'Accounting',
-      reason: 'Missing required receipts for hotel accommodation'
-    },
-    icon: 'x',
-    color: 'red'
-  },
-  {
-    id: 6,
-    type: 'edit',
-    title: 'Document Updated',
-    description: 'You updated Travel Expense Report - Conference',
-    user: 'You',
-    timestamp: '2024-10-25T10:45:00Z',
-    details: {
-      documentTitle: 'Travel Expense Report - Conference',
-      changes: 'Added additional receipts and expense breakdown'
-    },
-    icon: 'edit',
-    color: 'purple'
-  },
-  {
-    id: 7,
-    type: 'submission',
-    title: 'Document Submitted',
-    description: 'Travel Expense Report - Conference submitted for review',
-    user: 'You',
-    timestamp: '2024-10-25T08:00:00Z',
-    details: {
-      documentTitle: 'Travel Expense Report - Conference',
-      category: 'Expense Report',
-      reviewer: 'Accounting'
-    },
-    icon: 'upload',
-    color: 'blue'
-  },
-  {
-    id: 8,
-    type: 'approval',
-    title: 'Document Approved',
-    description: 'Quarterly Performance Report Q3 has been approved',
-    user: 'Management',
-    timestamp: '2024-10-22T15:20:00Z',
-    details: {
-      documentTitle: 'Quarterly Performance Report Q3',
-      approver: 'Management',
-      comments: 'Excellent work on meeting all quarterly targets.'
-    },
-    icon: 'check',
-    color: 'green'
-  },
-  {
-    id: 9,
-    type: 'comment',
-    title: 'Review Comment Added',
-    description: 'New comment on Quarterly Performance Report Q3',
-    user: 'Management',
-    timestamp: '2024-10-21T14:10:00Z',
-    details: {
-      documentTitle: 'Quarterly Performance Report Q3',
-      comment: 'Please clarify the variance in customer satisfaction metrics.',
-      commenter: 'Management'
-    },
-    icon: 'message',
-    color: 'yellow'
-  },
-  {
-    id: 10,
-    type: 'submission',
-    title: 'Document Submitted',
-    description: 'Quarterly Performance Report Q3 submitted for review',
-    user: 'You',
-    timestamp: '2024-10-20T16:30:00Z',
-    details: {
-      documentTitle: 'Quarterly Performance Report Q3',
-      category: 'Performance Report',
-      reviewer: 'Management'
-    },
-    icon: 'upload',
-    color: 'blue'
-  },
-  {
-    id: 11,
-    type: 'system',
-    title: 'Account Settings Updated',
-    description: 'You updated your notification preferences',
-    user: 'You',
-    timestamp: '2024-10-18T12:00:00Z',
-    details: {
-      setting: 'Notification Preferences',
-      changes: 'Enabled email notifications for approvals'
-    },
-    icon: 'settings',
-    color: 'gray'
-  },
-  {
-    id: 12,
-    type: 'approval',
-    title: 'Document Approved',
-    description: 'Annual Audit Report 2024 has been approved',
-    user: 'Audit Committee',
-    timestamp: '2024-10-17T11:45:00Z',
-    details: {
-      documentTitle: 'Annual Audit Report 2024',
-      approver: 'Audit Committee',
-      comments: 'Report is comprehensive and meets all regulatory requirements.'
-    },
-    icon: 'check',
-    color: 'green'
-  }
-];
+// Define the interface locally to match ActivityCard requirements
+interface Activity {
+  id: number;
+  type: string;
+  title: string;
+  description: string;
+  user: string;
+  timestamp: string;
+  details: any;
+  icon: string;
+  color: string;
+}
 
 const ActivityLog: React.FC = () => {
+  const [activitiesList, setActivitiesList] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('all');
   // Default to "All time" on initial load
   const [dateRange, setDateRange] = useState('all');
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>();
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>();
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
-
-  // Use the module-level activities as the data source
-  const activitiesList = activities;
 
   const typeOptions = [
     { value: 'all', label: 'All Activities' },
@@ -214,6 +45,72 @@ const ActivityLog: React.FC = () => {
     { value: 'all', label: 'All time' },
     { value: 'custom', label: 'Custom Range' }
   ];
+
+  useEffect(() => {
+    const fetchActivities = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const response = await axios.get('/api/v1/submissions/notifications', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (response.data.success) {
+          const mappedActivities: Activity[] = response.data.data.map((item: any) => {
+             const type = mapActivityType(item.message);
+             return {
+                id: parseInt(item.id),
+                type: type,
+                title: item.project,
+                description: item.message,
+                user: item.user.name,
+                timestamp: item.timestamp,
+                details: {
+                    documentTitle: item.project,
+                },
+                icon: getIconForType(type),
+                color: getColorForType(type)
+             };
+          });
+          setActivitiesList(mappedActivities);
+        }
+      } catch (error) {
+        console.error('Failed to fetch activities:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchActivities();
+  }, []);
+
+  const mapActivityType = (message: string): string => {
+    const msg = message.toLowerCase();
+    if (msg.includes('submitted')) return 'submission';
+    if (msg.includes('approved')) return 'approval';
+    if (msg.includes('rejected')) return 'rejection';
+    if (msg.includes('updated')) return 'edit';
+    return 'system';
+  };
+
+  const getIconForType = (type: string): string => {
+      switch(type) {
+          case 'submission': return 'upload';
+          case 'approval': return 'check';
+          case 'rejection': return 'x';
+          case 'edit': return 'edit';
+          default: return 'info';
+      }
+  };
+
+  const getColorForType = (type: string): string => {
+      switch(type) {
+          case 'submission': return 'blue';
+          case 'approval': return 'green';
+          case 'rejection': return 'red';
+          case 'edit': return 'purple';
+          default: return 'gray';
+      }
+  };
 
   const getFilteredActivities = () => {
     let filtered = activitiesList;
@@ -263,10 +160,6 @@ const ActivityLog: React.FC = () => {
 
   const filteredActivities = getFilteredActivities();
 
-  
-
-  // summary counts removed — not used in simplified layout
-
   return (
     <>
       <PageMeta 
@@ -282,8 +175,6 @@ const ActivityLog: React.FC = () => {
             Track all your activities and system interactions
           </p>
         </div>
-
-        {/* Filters (Activity Type, Date Range, Search) - moved to top */}
 
         {/* Filters (Activity Type, Date Range, Search) */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
@@ -394,7 +285,9 @@ const ActivityLog: React.FC = () => {
           </div>
           
           <div className="p-6">
-            {filteredActivities.length > 0 ? (
+            {loading ? (
+              <div className="text-center py-12">Loading activities...</div>
+            ) : filteredActivities.length > 0 ? (
               <div className="space-y-4">
                 {filteredActivities.map((activity) => (
                   <ActivityCard key={activity.id} activity={activity} />
@@ -419,8 +312,5 @@ const ActivityLog: React.FC = () => {
     </>
   );
 };
-
-// Re-export activities as a named export (kept here to avoid modifier-in-block parser issues)
-export { activities };
 
 export default ActivityLog;

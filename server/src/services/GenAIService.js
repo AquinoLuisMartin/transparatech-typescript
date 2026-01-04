@@ -1,4 +1,4 @@
-const { GoogleGenAI } = require("@google/genai");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 class GenAIService {
   constructor() {
@@ -10,8 +10,8 @@ class GenAIService {
     }
 
     try {
-      this.ai = new GoogleGenAI(process.env.GEMINI_API_KEY);
-      this.model = this.ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+      this.ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      this.model = this.ai.getGenerativeModel({ model: "gemini-3-flash-preview" });
     } catch (error) {
       console.error('Failed to initialize Google GenAI:', error);
       this.ai = null;

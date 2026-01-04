@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import PageMeta from '../components/common/PageMeta';
+import PageMeta from '../../components/common/PageMeta';
 import { 
   UserIcon,
   LockIcon,
   DocsIcon,
   TimeIcon,
   CheckCircleIcon
-} from '../icons';
+} from '../../icons';
 
 interface SystemSettings {
   siteName: string;
