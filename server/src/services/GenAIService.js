@@ -11,11 +11,31 @@ class GenAIService {
 
     try {
       this.ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      this.model = this.ai.getGenerativeModel({ model: "gemini-3-flash-preview" });
+      // Using gemini-3-flash-preview as requested
+      this.modelName = "gemini-3-flash-preview";
+      this.model = this.ai.getGenerativeModel({ model: this.modelName });
+      console.log(`GenAI Service initialized with model: ${this.modelName}`);
     } catch (error) {
       console.error('Failed to initialize Google GenAI:', error);
       this.ai = null;
       this.model = null;
+    }
+  }
+
+  async _retryOperation(operation, maxRetries = 3, delay = 2000) {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        return await operation();
+      } catch (error) {
+        if (error.message.includes('429') || error.status === 429) {
+          if (i === maxRetries - 1) throw error;
+          console.log(`Rate limited (${this.modelName}). Retrying in ${delay}ms... (Attempt ${i + 1}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          delay *= 2; // Exponential backoff
+        } else {
+          throw error;
+        }
+      }
     }
   }
 
@@ -25,11 +45,14 @@ class GenAIService {
     }
 
     try {
-      const result = await this.model.generateContent(prompt);
+      const result = await this._retryOperation(() => this.model.generateContent(prompt));
       const response = await result.response;
       return response.text();
     } catch (error) {
       console.error('GenAI Error:', error);
+      if (error.message.includes('429')) {
+        throw new Error('AI Model is currently busy (Rate Limit). Please try again in a moment.');
+      }
       throw new Error('Failed to generate content');
     }
   }

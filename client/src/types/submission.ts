@@ -12,6 +12,7 @@ export interface Submission {
   approvedDate?: string;
   rejectedDate?: string;
   rejectionReason?: string;
+  ai_feedback?: string;
 }
 
 export interface OfficerSubmission {

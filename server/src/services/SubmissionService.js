@@ -50,6 +50,17 @@ class SubmissionService {
     return result.rows[0];
   }
 
+  static async updateAIFeedback(id, feedback) {
+    const queryText = `
+      UPDATE "Submission" 
+      SET ai_feedback = $1
+      WHERE id = $2
+      RETURNING *
+    `;
+    const result = await this.executeQuery(queryText, [feedback, id]);
+    return result.rows[0];
+  }
+
   static async delete(id) {
     const result = await this.executeQuery(SUBMISSION_QUERIES.DELETE_SUBMISSION, [id]);
     return result.rowCount > 0;

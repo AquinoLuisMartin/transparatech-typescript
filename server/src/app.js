@@ -71,6 +71,7 @@ const feedbackRoutes = require('./routes/feedback');
 const organizationRoutes = require('./routes/organizations');
 const settingsRoutes = require('./routes/settings');
 const analyticsRoutes = require('./routes/analytics');
+const notificationRoutes = require('./routes/notifications');
 const apiPrefix = process.env.API_PREFIX || '/api/v1';
 
 // Serve uploaded files statically
@@ -86,6 +87,7 @@ app.use(`${apiPrefix}/feedback`, feedbackRoutes);
 app.use(`${apiPrefix}/organizations`, organizationRoutes);
 app.use(`${apiPrefix}/settings`, settingsRoutes);
 app.use(`${apiPrefix}/analytics`, analyticsRoutes);
+app.use(`${apiPrefix}/notifications`, notificationRoutes);
 app.use(`${apiPrefix}/ai`, aiRoutes);
 
 // Error handling middleware

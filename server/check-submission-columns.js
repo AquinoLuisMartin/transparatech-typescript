@@ -1,5 +1,5 @@
-const { query } = require('./src/config/database');
 require('dotenv').config();
+const { query } = require('./src/config/database');
 
 async function checkSubmissionColumns() {
   try {

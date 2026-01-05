@@ -3,7 +3,8 @@ const {
   generateText,
   analyzeText,
   chatResponse,
-  getAIStatus
+  getAIStatus,
+  analyzeSubmission
 } = require('../controllers/aiController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -17,5 +18,6 @@ router.get('/status', getAIStatus);
 router.post('/generate', generateText);
 router.post('/analyze', analyzeText);
 router.post('/chat', chatResponse);
+router.post('/analyze-submission/:id', analyzeSubmission);
 
 module.exports = router;

@@ -52,10 +52,10 @@ const SUBMISSION_QUERIES = {
   // Update Submission
   UPDATE_STATUS: `
     UPDATE "Submission" 
-    SET status = $1, 
+    SET status = $1::text, 
         reviewer_id = $2, 
-        approved_date = CASE WHEN $1 = 'approved' THEN NOW() ELSE NULL END,
-        rejected_date = CASE WHEN $1 = 'rejected' THEN NOW() ELSE NULL END,
+        approved_date = CASE WHEN $1::text = 'approved' THEN NOW() ELSE NULL END,
+        rejected_date = CASE WHEN $1::text = 'rejected' THEN NOW() ELSE NULL END,
         rejection_reason = $3,
         updated_at = NOW()
     WHERE id = $4

@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Submission } from '../types/submission';
+import axios from 'axios';
 
 type Props = {
   submission: Submission | null;
@@ -18,9 +19,14 @@ const SubmissionDetailsModal: React.FC<Props> = ({ submission, open, onClose }) 
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const modalRef = useRef<HTMLDivElement | null>(null);
   const prevActive = useRef<HTMLElement | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [localFeedback, setLocalFeedback] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
+      setLocalFeedback(null); // Reset on open
+      setError(null);
       prevActive.current = document.activeElement as HTMLElement;
       setTimeout(() => closeRef.current?.focus(), 0);
       const onKey = (e: KeyboardEvent) => {
@@ -48,18 +54,39 @@ const SubmissionDetailsModal: React.FC<Props> = ({ submission, open, onClose }) 
     }
   }, [open, onClose]);
 
+  const handleAnalyze = async () => {
+    if (!submission) return;
+    setAnalyzing(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const res = await axios.post(`/api/v1/ai/analyze-submission/${submission.id}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data.success) {
+        setLocalFeedback(res.data.data.feedback);
+      }
+    } catch (error: any) {
+      console.error('Analysis failed', error);
+      setError(error.response?.data?.message || 'Failed to generate analysis. Please try again.');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   if (!open || !submission) return null;
 
   const mainFile = submission.files && submission.files.length > 0 ? submission.files[0] : null;
+  const feedback = localFeedback || submission.ai_feedback;
 
   const handleView = () => {
-    if (mainFile) window.open(`/${mainFile}`, '_blank');
+    if (mainFile) window.open(`/uploads/${mainFile}`, '_blank');
   };
 
   const handleDownload = () => {
     if (!mainFile) return;
     const a = document.createElement('a');
-    a.href = `/${mainFile}`;
+    a.href = `/uploads/${mainFile}`;
     a.download = mainFile;
     document.body.appendChild(a);
     a.click();
@@ -79,7 +106,7 @@ const SubmissionDetailsModal: React.FC<Props> = ({ submission, open, onClose }) 
         aria-modal="true"
         aria-labelledby="submission-title"
         onClick={(e) => e.stopPropagation()}
-        className="relative z-[10000] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 ease-in-out p-6 md:p-8 max-w-lg w-full space-y-4"
+        className="relative z-[10000] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 ease-in-out p-6 md:p-8 max-w-lg w-full space-y-4 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
@@ -101,6 +128,46 @@ const SubmissionDetailsModal: React.FC<Props> = ({ submission, open, onClose }) 
             </button>
           </div>
         </div>
+
+        {/* AI Feedback Section */}
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-800">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300 flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              AI Analysis
+            </h4>
+            {!feedback && !analyzing && (
+              <button 
+                onClick={handleAnalyze}
+                className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-full transition-colors"
+              >
+                Generate Analysis
+              </button>
+            )}
+          </div>
+          
+          {analyzing ? (
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 animate-pulse">
+              <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              Analyzing document...
+            </div>
+          ) : error ? (
+            <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded border border-red-100 dark:border-red-800">
+              {error}
+            </div>
+          ) : feedback ? (
+            <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+              {feedback}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+              No AI analysis available for this document yet.
+            </p>
+          )}
+        </div>
+
+
+
 
         <div className="space-y-4 text-sm md:text-base leading-relaxed text-gray-700 dark:text-gray-200">
           <div className="text-sm md:text-base text-gray-600 dark:text-gray-300 space-y-1">
