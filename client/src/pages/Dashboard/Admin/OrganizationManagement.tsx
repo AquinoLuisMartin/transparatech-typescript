@@ -25,6 +25,16 @@ interface Organization {
 }
 
 const OrganizationManagement = () => {
+  const organizationOptions = [
+    { value: 'Alliance of Computer Engineering Students', label: 'ACES - Alliance of Computer Engineering Students' },
+    { value: 'Integrated Students in Information Technology Education', label: 'iSITE - Integrated Students in Information Technology Education' },
+    { value: 'Junior Philippine Institute of Accountancy - Sta Maria', label: 'JPIA - Junior Philippine Institute of Accountancy' },
+    { value: 'Association of Future Teachers', label: 'AFT - Association of Future Teachers' },
+    { value: 'Hospitality Management Society', label: 'HMSOC - Hospitality Management Society' },
+    { value: 'Chamber of Entrepreneurs and Managers', label: 'CEM - Chamber of Entrepreneurs and Managers' },
+    { value: 'Diploma in Office Management SY-Quest', label: 'DOMT - Diploma in Office Management SY-Quest' }
+  ];
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -236,7 +246,9 @@ const OrganizationManagement = () => {
           <div className="flex flex-col sm:flex-row gap-4 flex-1">
             <div className="relative flex-1 max-w-md">
               <div className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400">
-                🔍
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
               </div>
               <input
                 type="text"

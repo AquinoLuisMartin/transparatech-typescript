@@ -143,19 +143,19 @@ const initializeConfig = () => {
   const validationErrors = validateEnvironment();
   
   if (validationErrors.length > 0) {
-    console.error('❌ Environment Configuration Errors:');
+    console.error('Environment Configuration Errors:');
     validationErrors.forEach(error => console.error(`   - ${error}`));
     
     // In production, fail hard
     if (process.env.NODE_ENV === 'production') {
-      console.error('\n🚨 Server cannot start in production with missing environment variables.');
+      console.error('\nServer cannot start in production with missing environment variables.');
       process.exit(1);
     } else {
-      console.error('\n⚠️  Server starting with configuration issues. Please fix for production deployment.');
+      console.error('\nServer starting with configuration issues. Please fix for production deployment.');
     }
   }
 
-  console.log(`✅ Configuration initialized for ${process.env.NODE_ENV || 'development'} environment`);
+  console.log(`Configuration initialized for ${process.env.NODE_ENV || 'development'} environment`);
 };
 
 module.exports = {

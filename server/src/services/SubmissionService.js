@@ -43,6 +43,11 @@ class SubmissionService {
     return result.rows;
   }
 
+  static async findPublicByOrganization(organization, limit = 10, offset = 0) {
+    const result = await this.executeQuery(SUBMISSION_QUERIES.FIND_PUBLIC_BY_ORGANIZATION, [organization, limit, offset]);
+    return result.rows;
+  }
+
   static async updateStatus(id, status, reviewerId, rejectionReason = null) {
     const result = await this.executeQuery(SUBMISSION_QUERIES.UPDATE_STATUS, [
       status, reviewerId, rejectionReason, id
@@ -66,7 +71,11 @@ class SubmissionService {
     return result.rowCount > 0;
   }
 
-  static async getStats() {
+  static async getStats(organization = null) {
+    if (organization) {
+      const result = await this.executeQuery(SUBMISSION_QUERIES.GET_STATS_BY_ORGANIZATION, [organization]);
+      return result.rows[0];
+    }
     const result = await this.executeQuery(SUBMISSION_QUERIES.GET_STATS);
     return result.rows[0];
   }

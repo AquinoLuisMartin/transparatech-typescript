@@ -39,7 +39,7 @@ const register = asyncHandler(async (req, res) => {
   }, 'AUTH');
 
   // Debug: Log the actual body structure (safely)
-  console.log('🔍 Registration data received:', {
+  console.log('Registration data received:', {
     hasEmail: !!email,
     hasPassword: !!password,
     hasFirstName: !!firstName,

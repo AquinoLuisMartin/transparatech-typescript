@@ -4,6 +4,7 @@ const { asyncHandler } = require('../utils/asyncHandler');
 const fs = require('fs');
 const path = require('path');
 const { PDFParse } = require('pdf-parse');
+const mammoth = require('mammoth');
 
 // @desc    Generate text using AI
 // @route   POST /api/v1/ai/generate
@@ -178,10 +179,13 @@ const analyzeSubmission = asyncHandler(async (req, res) => {
       const parser = new PDFParse({ data: dataBuffer });
       const data = await parser.getText();
       textContent = data.text;
+    } else if (ext === '.docx') {
+      const result = await mammoth.extractRawText({ path: filePath });
+      textContent = result.value;
     } else if (['.txt', '.md', '.csv'].includes(ext)) {
       textContent = fs.readFileSync(filePath, 'utf8');
     } else {
-      return res.status(400).json({ success: false, message: 'Unsupported file type for analysis. Only PDF and text files are supported.' });
+      return res.status(400).json({ success: false, message: 'Unsupported file type for analysis. Only PDF, DOCX, and text files are supported.' });
     }
   } catch (err) {
     console.error('Error reading file:', err);

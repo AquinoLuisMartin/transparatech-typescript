@@ -40,7 +40,7 @@ const getAllowedOrigins = () => {
     case 'production':
       // Production: Only allow specified origins, no localhost
       if (envOrigins.length === 0) {
-        console.error('🚨 CORS Error: No CLIENT_URL specified for production environment');
+        console.error('CORS Error: No CLIENT_URL specified for production environment');
         throw new Error('CLIENT_URL must be specified in production');
       }
       

@@ -8,21 +8,39 @@ const getOrganizations = asyncHandler(async (req, res) => {
   const result = await pool.query('SELECT * FROM organizations ORDER BY name ASC');
 
   const organizations = await Promise.all(result.rows.map(async (org) => {
-    // Count members
-    const memberCountRes = await pool.query('SELECT COUNT(*) FROM "SignUp" WHERE organization = $1', [org.name]);
+    // Count members using acronym (case-insensitive)
+    const memberCountRes = await pool.query(
+      'SELECT COUNT(*) FROM "SignUp" WHERE organization ILIKE $1 AND account_type = $2', 
+      [org.acronym, 'Organization Member (Viewer)']
+    );
     
-    // Count submissions
+    // Count officers using acronym (case-insensitive)
+    const officerCountRes = await pool.query(
+      'SELECT COUNT(*) FROM "SignUp" WHERE organization ILIKE $1 AND account_type = $2', 
+      [org.acronym, 'Officer']
+    );
+
+    // Get last activity (submission or member update)
+    const lastActivityRes = await pool.query(
+      `SELECT GREATEST(
+        (SELECT MAX(created_at) FROM "Submission" s JOIN "SignUp" u ON s.user_id = u.id WHERE u.organization ILIKE $1),
+        (SELECT MAX(updated_at) FROM "SignUp" WHERE organization ILIKE $1)
+       ) as last_activity`,
+      [org.acronym]
+    );
+
+    // Count submissions using acronym (case-insensitive)
     const submissionCountRes = await pool.query(
-      'SELECT COUNT(*) FROM "Submission" s JOIN "SignUp" u ON s.user_id = u.id WHERE u.organization = $1', 
-      [org.name]
+      'SELECT COUNT(*) FROM "Submission" s JOIN "SignUp" u ON s.user_id = u.id WHERE u.organization ILIKE $1', 
+      [org.acronym]
     );
     
     return {
       ...org,
       memberCount: parseInt(memberCountRes.rows[0].count),
       submissionCount: parseInt(submissionCountRes.rows[0].count),
-      officerCount: 0, // Placeholder
-      lastActivity: new Date().toISOString() // Placeholder
+      officerCount: parseInt(officerCountRes.rows[0].count),
+      lastActivity: lastActivityRes.rows[0].last_activity || org.updated_at
     };
   }));
 

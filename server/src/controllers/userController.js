@@ -16,15 +16,28 @@ const getUsers = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     data: {
-      users: users.map(user => ({
-        id: user.id,
-        email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        role: user.role,
-        createdAt: user.created_at,
-        updatedAt: user.updated_at
-      })),
+      users: users.map(user => {
+        // Map account_type to role for frontend
+        let role = 'viewer';
+        const type = (user.account_type || '').toLowerCase();
+        
+        if (type.includes('admin')) {
+          role = 'admin_full';
+        } else if (type.includes('officer')) {
+          role = 'officer';
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          role: role,
+          organization: user.organization_id || 'N/A',
+          createdAt: user.created_at,
+          updatedAt: user.updated_at
+        };
+      }),
       pagination: {
         page,
         limit,
@@ -33,6 +46,63 @@ const getUsers = asyncHandler(async (req, res) => {
       }
     }
   });
+});
+
+// @desc    Create new user
+// @route   POST /api/v1/users
+// @access  Private/Admin
+const createUser = asyncHandler(async (req, res) => {
+  const { name, firstName, lastName, email, password, role, organization, studentNumber } = req.body;
+
+  // Handle name splitting if provided as a single string
+  let fName = firstName;
+  let lName = lastName;
+  if (!fName && name) {
+    const parts = name.split(' ');
+    fName = parts[0];
+    lName = parts.slice(1).join(' ') || ' ';
+  }
+
+  // Check if user already exists
+  const userExists = await User.findByEmail(email);
+  if (userExists) {
+    return res.status(400).json({
+      success: false,
+      message: 'User already exists'
+    });
+  }
+
+  // Hash password
+  const hashedPassword = await hashPassword(password);
+
+  // Map "role" (frontend value) to "accountType" (db value) logic
+  let accountType = 'Organization Member (Viewer)';
+  if (role === 'admin_full') accountType = 'Administrator';
+  else if (role === 'admin_approval') accountType = 'Administrator';
+  else if (role === 'officer') accountType = 'Officer';
+
+  const user = await User.create({
+    firstName: fName,
+    lastName: lName,
+    email,
+    password: hashedPassword,
+    accountType,
+    organizationId: organization, // Maps to organizationId in DatabaseService -> organization column
+    studentNumber: studentNumber || null,
+    middleInitial: ''
+  });
+
+  if (user) {
+    res.status(201).json({
+      success: true,
+      data: user
+    });
+  } else {
+    res.status(400).json({
+      success: false,
+      message: 'Invalid user data'
+    });
+  }
 });
 
 // @desc    Get single user
@@ -135,6 +205,7 @@ const deleteUser = asyncHandler(async (req, res) => {
 
 module.exports = {
   getUsers,
+  createUser,
   getUser,
   updateUser,
   deleteUser

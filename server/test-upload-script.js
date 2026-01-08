@@ -63,11 +63,11 @@ async function testUpload() {
       }
     });
 
-    console.log('✅ Upload successful!');
+    console.log('Upload successful!');
     console.log('Response:', uploadRes.data);
 
   } catch (error) {
-    console.error('❌ Test failed:');
+    console.error('Test failed:');
     if (error.response) {
       console.error('Status:', error.response.status);
       console.error('Data:', error.response.data);

@@ -49,6 +49,16 @@ const SUBMISSION_QUERIES = {
     LIMIT $1 OFFSET $2
   `,
 
+  FIND_PUBLIC_BY_ORGANIZATION: `
+    SELECT s.*, 
+           u.first_name as user_first_name, u.last_name as user_last_name, u.organization as user_organization
+    FROM "Submission" s
+    LEFT JOIN "SignUp" u ON s.user_id = u.id
+    WHERE TRIM(u.organization) ILIKE TRIM($1)
+    ORDER BY s.updated_at DESC
+    LIMIT $2 OFFSET $3
+  `,
+
   // Update Submission
   UPDATE_STATUS: `
     UPDATE "Submission" 
@@ -71,10 +81,22 @@ const SUBMISSION_QUERIES = {
   GET_STATS: `
     SELECT
       COUNT(*) FILTER (WHERE status = 'approved') as public_documents,
-      COUNT(*) FILTER (WHERE type = 'report') as reports,
-      COUNT(*) FILTER (WHERE type = 'dataset') as datasets,
+      COUNT(*) FILTER (WHERE status = 'approved' AND (type ILIKE '%Report%' OR type ILIKE '%Summary%')) as reports,
+      COUNT(*) FILTER (WHERE status = 'approved' AND (type ILIKE '%Asset%' OR type ILIKE '%Data%')) as datasets,
       COUNT(*) FILTER (WHERE status = 'pending') as pending_submissions
     FROM "Submission"
+  `,
+
+  // Get Stats by Organization (for viewers)
+  GET_STATS_BY_ORGANIZATION: `
+    SELECT
+      COUNT(*) as public_documents,
+      COUNT(*) FILTER (WHERE s.type ILIKE '%Report%' OR s.type ILIKE '%Summary%') as reports,
+      COUNT(*) FILTER (WHERE s.type ILIKE '%Asset%' OR s.type ILIKE '%Data%') as datasets,
+      COUNT(*) FILTER (WHERE s.status = 'pending') as pending_submissions
+    FROM "Submission" s
+    JOIN "SignUp" u ON s.user_id = u.id
+    WHERE TRIM(u.organization) ILIKE TRIM($1)
   `,
 
   // Get Recent Activity (for notifications)

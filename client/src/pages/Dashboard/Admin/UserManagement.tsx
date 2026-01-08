@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import PageMeta from '../../../components/common/PageMeta';
+import { useNotification } from '../../../context/NotificationContext'; 
 
 interface User {
   id: number;
@@ -16,6 +17,7 @@ interface User {
 }
 
 const UserManagement: React.FC = () => {
+  const { showNotification } = useNotification();
   const [filterRole, setFilterRole] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -57,6 +59,9 @@ const UserManagement: React.FC = () => {
     { value: 'cem', label: 'CEM' },
     { value: 'domt', label: 'DOMT' }
   ];
+  
+  // Safety alias in case of reference mix-up
+  const organizationOptions = studentOrgs;
 
   const adminTypes = [
     { value: 'coa', label: 'Commission on Audit (COA)' },
@@ -73,7 +78,7 @@ const UserManagement: React.FC = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       const res = await axios.get('/api/v1/users', {
         headers: { Authorization: `Bearer ${token}` },
         params: { limit: 100 }
@@ -120,7 +125,7 @@ const UserManagement: React.FC = () => {
       const firstName = nameParts[0];
       const lastName = nameParts.slice(1).join(' ') || 'User';
 
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       await axios.post('/api/v1/auth/register', {
         firstName,
         lastName,
@@ -144,8 +149,9 @@ const UserManagement: React.FC = () => {
       });
       setNewUserCustomOrg('');
       setShowAddUserModal(false);
+      showNotification('User created successfully', 'success');
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to create user');
+      showNotification(err.response?.data?.message || 'Failed to create user', 'error');
     }
   };
 
@@ -245,12 +251,12 @@ const UserManagement: React.FC = () => {
   const confirmSuspendUser = () => {
     // Validate suspension reason if suspending a user
     if (selectedUser?.status !== 'suspended' && !suspensionReason.trim()) {
-      alert('Please provide a reason for suspension.');
+      showNotification('Please provide a reason for suspension.', 'warning');
       return;
     }
     
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       // Toggle status logic would go here
       // For now just update local state
       const newStatus = selectedUser?.status === 'suspended' ? 'active' : 'suspended';
@@ -262,8 +268,10 @@ const UserManagement: React.FC = () => {
       setShowSuspendModal(false);
       setSelectedUser(null);
       setSuspensionReason('');
+      showNotification(`User ${newStatus === 'active' ? 'activated' : 'suspended'} successfully`, 'success');
     } catch (err) {
       console.error('Failed to update user status', err);
+      showNotification('Failed to update user status', 'error');
     }
   };
 
@@ -287,7 +295,7 @@ const UserManagement: React.FC = () => {
     const finalOrganization = editFormData.organization === 'Others' ? customOrganization : editFormData.organization;
     
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       const nameParts = editFormData.name.split(' ');
       
       await axios.put(`/api/v1/users/${selectedUser?.id}`, {
@@ -312,8 +320,9 @@ const UserManagement: React.FC = () => {
         status: ''
       });
       setCustomOrganization('');
+      showNotification('User updated successfully', 'success');
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to update user');
+      showNotification(err.response?.data?.message || 'Failed to update user', 'error');
     }
   };
 

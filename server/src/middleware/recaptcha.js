@@ -48,7 +48,7 @@ const verifyRecaptcha = (options = {}) => {
 
       // Handle demo bypass token first
       if (recaptchaToken === 'demo_bypass_token' && process.env.NODE_ENV === 'development') {
-        console.log('✅ Demo bypass token detected - allowing request in development mode');
+        console.log('Demo bypass token detected - allowing request in development mode');
         logger.info('Demo bypass token used - allowing request in development mode', {
           endpoint: req.path,
           ip: clientIp

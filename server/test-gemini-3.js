@@ -11,9 +11,9 @@ async function testModel() {
     const model = genAI.getGenerativeModel({ model: modelName });
     const result = await model.generateContent("Hello, are you there?");
     const response = await result.response;
-    console.log("✅ Success! Response:", response.text());
+    console.log("Success! Response:", response.text());
   } catch (error) {
-    console.log("❌ Error:", error.message);
+    console.log("Error:", error.message);
   }
 }
 

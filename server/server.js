@@ -53,36 +53,36 @@ const startServer = async () => {
 
     // Graceful shutdown
     process.on('SIGTERM', () => {
-      console.log('📤 Received SIGTERM, shutting down gracefully');
+      console.log('Received SIGTERM, shutting down gracefully');
       server.close(() => {
-        console.log('✅ Server closed');
+        console.log('Server closed');
         process.exit(0);
       });
     });
 
     process.on('SIGINT', () => {
-      console.log('📤 Received SIGINT, shutting down gracefully');
+      console.log('Received SIGINT, shutting down gracefully');
       server.close(() => {
-        console.log('✅ Server closed');
+        console.log('Server closed');
         process.exit(0);
       });
     });
 
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    console.error('Failed to start server:', error);
     process.exit(1);
   }
 };
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err, promise) => {
-  console.error('⚠️  Unhandled Promise Rejection:', err.message);
+  console.error('Unhandled Promise Rejection:', err.message);
   // Don't exit the process, just log the error
 });
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
-  console.error('⚠️  Uncaught Exception:', err.message);
+  console.error('Uncaught Exception:', err.message);
   console.error('Stack:', err.stack);
   // Don't exit immediately, try to gracefully shutdown
   setTimeout(() => {

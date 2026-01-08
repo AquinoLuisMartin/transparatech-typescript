@@ -11,10 +11,10 @@ import UploadDocuments from '../pages/Dashboard/Officer/UploadDocuments';
 import MySubmissions from '../pages/Dashboard/Officer/MySubmissions';
 import ActivityLog from '../pages/Dashboard/Officer/ActivityLog';
 import ViewerDashboard from '../pages/Dashboard/Viewer';
-import DocumentsViewer from '../pages/Dashboard/Viewer/DocumentsViewer';
-import TransparencyReportViewer from '../pages/Dashboard/Viewer/TransparencyReportViewer';
-import AnnouncementsViewer from '../pages/Dashboard/Viewer/AnnouncementsViewer';
-import FeedbackViewer from '../pages/Dashboard/Viewer/FeedbackViewer';
+import ViewDocuments from '../pages/Dashboard/Viewer/ViewDocuments';
+import TransparencyReport from '../pages/Dashboard/Viewer/TransparencyReport';
+import Announcements from '../pages/Dashboard/Viewer/Announcements';
+import Feedback from '../pages/Dashboard/Viewer/Feedback';
 import AccountSettings from '../pages/AccountSettings';
 import LogIn from '../pages/AuthPages/LogIn';
 import SignUp from '../pages/AuthPages/SignUp';
@@ -171,7 +171,7 @@ const AppRoutes = () => {
           path: 'viewer/documents',
           element: (
             <PrivateRoute>
-              <DocumentsViewer />
+              <ViewDocuments />
             </PrivateRoute>
           ),
         },
@@ -179,7 +179,7 @@ const AppRoutes = () => {
           path: 'viewer/transparency',
           element: (
             <PrivateRoute>
-              <TransparencyReportViewer />
+              <TransparencyReport />
             </PrivateRoute>
           ),
         },
@@ -187,7 +187,7 @@ const AppRoutes = () => {
           path: 'viewer/announcements',
           element: (
             <PrivateRoute>
-              <AnnouncementsViewer />
+              <Announcements />
             </PrivateRoute>
           ),
         },
@@ -195,7 +195,7 @@ const AppRoutes = () => {
           path: 'viewer/feedback',
           element: (
             <PrivateRoute>
-              <FeedbackViewer />
+              <Feedback />
             </PrivateRoute>
           ),
         },

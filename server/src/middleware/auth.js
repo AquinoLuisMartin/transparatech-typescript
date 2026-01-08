@@ -46,7 +46,8 @@ const protect = asyncHandler(async (req, res, next) => {
       email: user.email,
       role,
       roleId,
-      accountType: user.account_type
+      accountType: user.account_type,
+      organization: user.organization
     };
     next();
   } catch (error) {

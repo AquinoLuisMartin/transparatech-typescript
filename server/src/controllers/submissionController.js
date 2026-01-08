@@ -131,10 +131,21 @@ const updateSubmissionStatus = asyncHandler(async (req, res) => {
 // @route   GET /api/v1/submissions/stats
 // @access  Private
 const getSubmissionStats = asyncHandler(async (req, res) => {
-  const stats = await SubmissionService.getStats();
+  // If user is a viewer, filter by their organization
+  const organization = req.user.roleId === 3 ? req.user.organization : null;
+  
+  if (req.user.roleId === 3) {
+    console.log(`Stats Request for Viewer: ${req.user.email} (Org: ${organization})`);
+  }
+
+  const stats = await SubmissionService.getStats(organization);
   
   // Add mock views count since it's not in DB yet
   stats.views = 12500; // Mock value matching the UI for now
+  
+  if (req.user.roleId === 3) {
+    console.log('Stats Result for Viewer:', stats);
+  }
 
   res.status(200).json({
     success: true,
@@ -150,7 +161,28 @@ const getPublicSubmissions = asyncHandler(async (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
   const offset = (page - 1) * limit;
 
-  const submissions = await SubmissionService.findPublic(limit, offset);
+  console.log('Get Public Submissions - User Info:', {
+    roleId: req.user.roleId,
+    organization: req.user.organization,
+    email: req.user.email
+  });
+
+  // If user is a viewer, filter by their organization
+  let submissions;
+  if (req.user.roleId === 3) {
+    if (req.user.organization) {
+      console.log('Fetching submissions for organization:', req.user.organization);
+      submissions = await SubmissionService.findPublicByOrganization(req.user.organization, limit, offset);
+    } else {
+      console.log('Viewer has no organization assigned. Returning empty list.');
+      submissions = [];
+    }
+  } else {
+    console.log('Fetching all public submissions (admin/officer)');
+    submissions = await SubmissionService.findPublic(limit, offset);
+  }
+
+  console.log('Found submissions:', submissions.length);
 
   res.status(200).json({
     success: true,
